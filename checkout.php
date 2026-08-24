@@ -1,0 +1,358 @@
+<?php
+session_start();
+require_once 'config/db.php';
+require_once 'includes/functions.php';
+
+if (empty($_SESSION['cart'])) {
+    header('Location: ' . BASE_URL . '/index.php');
+    exit;
+}
+
+// Fixed: Correct session check for user_id/logged_in
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ' . BASE_URL . '/auth/login.php');
+    exit;
+}
+
+// Generate CSRF token if not exists
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Fetch User's Companies for searchable selection
+$stmt = $conn->prepare("SELECT id, name, location FROM companies WHERE user_id = ?");
+$stmt->execute([$_SESSION['user_id']]);
+$user_companies = $stmt->fetchAll();
+
+// Fetch Delivery Zones
+$delivery_zones = $conn->query("SELECT * FROM delivery_zones ORDER BY zone_name")->fetchAll();
+
+// Calculate total with special requests
+$total = 0;
+$cart_items_details = [];
+foreach ($_SESSION['cart'] as $id => $qty) {
+    $stmt = $conn->prepare("SELECT item_name, price, promo_price, description FROM food_items WHERE id = ?");
+    $stmt->execute([$id]);
+    $item = $stmt->fetch();
+    if ($item) {
+        // Use promo_price if it exists
+        $price = !empty($item['promo_price']) ? $item['promo_price'] : $item['price'];
+        // Initial subtotal without extras
+        $subtotal = $price * $qty;
+        $total += $subtotal;
+        $cart_items_details[] = [
+            'id' => $id,
+            'name' => $item['item_name'],
+            'description' => $item['description'],
+            'price' => $price,
+            'qty' => $qty,
+            'subtotal' => $subtotal
+        ];
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['csrf']) && $_POST['csrf'] == $_SESSION['csrf_token']) {
+    try {
+        $conn->beginTransaction();
+
+        $delivery_zone_id = (int) $_POST['delivery_zone_id'];
+        $delivery_stmt = $conn->prepare("SELECT delivery_fee FROM delivery_zones WHERE id = ?");
+        $delivery_stmt->execute([$delivery_zone_id]);
+        $delivery_charge = $delivery_stmt->fetchColumn() ?: 0;
+
+        // Calculate final total including user-provided request prices
+        $items_total = 0;
+        foreach ($cart_items_details as $item) {
+            $req_price = isset($_POST['request_price'][$item['id']]) ? floatval($_POST['request_price'][$item['id']]) : 0;
+            $items_total += ($item['price'] * $item['qty']) + $req_price;
+        }
+
+        $final_total = $items_total + $delivery_charge;
+
+        // Place order
+        $order_ref = 'ORD-' . strtoupper(uniqid());
+        $user_id = $_SESSION['user_id'];
+        $company_id = (!empty($_POST['selected_company_id'])) ? (int) $_POST['selected_company_id'] : null;
+
+        $stmt = $conn->prepare("INSERT INTO orders (user_id, company_id, order_reference, total, delivery_charge, delivery_zone_id) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $company_id, $order_ref, $final_total, $delivery_charge, $delivery_zone_id]);
+        $order_id = $conn->lastInsertId();
+
+        foreach ($_SESSION['cart'] as $id => $qty) {
+            $stmt = $conn->prepare("SELECT price, promo_price FROM food_items WHERE id = ?");
+            $stmt->execute([$id]);
+            $item = $stmt->fetch();
+            $price = !empty($item['promo_price']) ? $item['promo_price'] : $item['price'];
+
+            $special_requests = isset($_POST['special_requests'][$id]) ? $_POST['special_requests'][$id] : '';
+            $request_price = isset($_POST['request_price'][$id]) ? floatval($_POST['request_price'][$id]) : 0;
+            $recipient_name = isset($_POST['recipient_name'][$id]) ? $_POST['recipient_name'][$id] : '';
+
+            $oi_stmt = $conn->prepare("INSERT INTO order_items (order_id, food_item_id, quantity, price, special_requests, request_price, recipient_name) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $oi_stmt->execute([$order_id, $id, $qty, $price, $special_requests, $request_price, $recipient_name]);
+        }
+
+        $conn->commit();
+
+        send_order_notifications($order_id);
+
+        unset($_SESSION['cart']);
+        header("Location: " . BASE_URL . "/orders/order_confirmation.php?ref=$order_ref");
+        exit;
+    } catch (Exception $e) {
+        $conn->rollBack();
+        $error = "Order processing failed: " . $e->getMessage();
+    }
+}
+
+include 'includes/header.php';
+?>
+
+<section class="container" style="padding: 2rem 0;">
+    <div style="max-width: 800px; margin: 0 auto;">
+        <h1 style="margin-bottom: 2rem;">Checkout Details</h1>
+
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger"
+                style="background: #fed7d7; color: #c53030; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+                <i class="fas fa-exclamation-circle"></i> <?php echo $error; ?>
+            </div>
+        <?php endif; ?>
+
+        <form method="POST" id="checkoutForm">
+            <input type="hidden" name="csrf" value="<?php echo $_SESSION['csrf_token']; ?>">
+
+            <!-- Company Section (Left) & Delivery Section (Right) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                <!-- Company Selection -->
+                <div
+                    style="background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 1.5rem; border: 1px solid #eee;">
+                    <h4 style="margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-building"
+                            style="color: var(--primary-color);"></i> Group Order (Optional)</h4>
+                    <div style="position: relative;">
+                        <input type="text" id="companySearch" list="companyList" placeholder="Search for a company..."
+                            style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem;">
+                        <datalist id="companyList">
+                            <?php foreach ($user_companies as $comp): ?>
+                                <option value="<?php echo htmlspecialchars($comp['name']); ?>"
+                                    data-id="<?php echo $comp['id']; ?>">
+                                    <?php echo htmlspecialchars($comp['location']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </datalist>
+                        <input type="hidden" name="selected_company_id" id="selectedCompanyId">
+                    </div>
+                </div>
+
+                <!-- Delivery Zone Selection -->
+                <div
+                    style="background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 1.5rem; border: 1px solid #eee;">
+                    <h4 style="margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-map-marker-alt"
+                            style="color: var(--primary-color);"></i> Delivery Location *</h4>
+                    <select name="delivery_zone_id" id="deliveryZone" required
+                        style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; background: #fff; cursor: pointer;">
+                        <option value="" data-fee="0">Select your area...</option>
+                        <?php foreach ($delivery_zones as $zone): ?>
+                            <option value="<?php echo $zone['id']; ?>" data-fee="<?php echo $zone['delivery_fee']; ?>">
+                                <?php echo htmlspecialchars($zone['zone_name']); ?>
+                                (<?php echo format_currency($zone['delivery_fee']); ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Order Items Section -->
+            <div
+                style="background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding: 2.5rem;">
+                <h3 style="margin-bottom: 2rem; border-bottom: 1px solid #eee; padding-bottom: 1rem;">Order Items &
+                    Labeling</h3>
+
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #eee; text-align: left; color: #666;">
+                                <th style="padding: 1rem 0.5rem;">Food Item</th>
+                                <th style="padding: 1rem 0.5rem; text-align: center;">Qty</th>
+                                <th style="padding: 1rem 0.5rem; text-align: right;">Price</th>
+                                <th style="padding: 1rem 0.5rem; text-align: center;">Customize</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($cart_items_details as $item): ?>
+                                <tr style="border-bottom: 1px solid #f9f9f9;">
+                                    <td style="padding: 1.5rem 0.5rem;">
+                                        <div style="font-weight: 700; color: #333;">
+                                            <?php echo htmlspecialchars($item['name']); ?>
+                                        </div>
+                                        <div style="font-size: 0.85rem; color: #888; margin-top: 0.3rem; line-height: 1.4;">
+                                            <?php echo htmlspecialchars($item['description'] ?? 'No description available'); ?>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 1.5rem 0.5rem; text-align: center; color: #555;">x
+                                        <?php echo $item['qty']; ?>
+                                    </td>
+                                    <td style="padding: 1.5rem 0.5rem; text-align: right; font-weight: 600;">
+                                        <?php echo format_currency($item['subtotal']); ?>
+                                    </td>
+                                    <td style="padding: 1.5rem 0.5rem; text-align: center;">
+                                        <button type="button" class="toggle-request-btn"
+                                            data-id="<?php echo $item['id']; ?>"
+                                            style="background: #f0f0f0; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: #666; transition: all 0.2s;">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr id="request-row-<?php echo $item['id']; ?>" style="display: none; background: #fafafa;">
+                                    <td colspan="4" style="padding: 2rem; border-bottom: 1px solid #eee;">
+                                        <div style="display: grid; gap: 1.5rem;">
+                                            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem;">
+                                                <div>
+                                                    <label
+                                                        style="display: block; font-size: 0.85rem; font-weight: 700; color: #444; margin-bottom: 0.5rem;">Recipient
+                                                        / Owner Name</label>
+                                                    <input type="text" name="recipient_name[<?php echo $item['id']; ?>]"
+                                                        placeholder="Who is this food for? (e.g. John Doe - HR)"
+                                                        style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 8px;">
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        style="display: block; font-size: 0.85rem; font-weight: 700; color: #444; margin-bottom: 0.5rem;">Extra
+                                                        Pay (GH₵)</label>
+                                                    <input type="number" name="request_price[<?php echo $item['id']; ?>]"
+                                                        value="0.00" step="0.01" min="0" class="request-price-input"
+                                                        style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 8px;">
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label
+                                                    style="display: block; font-size: 0.85rem; font-weight: 700; color: #444; margin-bottom: 0.5rem;">Special
+                                                    Instructions</label>
+                                                <textarea name="special_requests[<?php echo $item['id']; ?>]"
+                                                    placeholder="e.g. Extra Fish, No Cabbage..."
+                                                    style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 8px; min-height: 60px; font-family: inherit;"></textarea>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2"
+                                    style="padding: 2rem 0.5rem 0.5rem; text-align: right; color: #888; font-weight: 600;">
+                                    Subtotal:</td>
+                                <td style="padding: 2rem 0.5rem 0.5rem; text-align: right; font-weight: 600; color: #333;"
+                                    id="display-subtotal"><?php echo format_currency($total); ?></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"
+                                    style="padding: 0.5rem; text-align: right; color: #888; font-weight: 600;">Optional
+                                    Extras:</td>
+                                <td style="padding: 0.5rem; text-align: right; font-weight: 600; color: #ff6b35;"
+                                    id="display-extras">GH₵0.00</td>
+                                <td></td>
+                            </tr>
+                            <tr style="border-bottom: 2px solid #eee;">
+                                <td colspan="2"
+                                    style="padding: 0.5rem; text-align: right; color: #888; font-weight: 600;">Delivery
+                                    Charge:</td>
+                                <td style="padding: 0.5rem 0.5rem 1rem; text-align: right; font-weight: 600; color: #2ecc71;"
+                                    id="display-delivery">GH₵0.00</td>
+                                <td></td>
+                            </tr>
+                            <tr style="font-size: 1.8rem; font-weight: 900;">
+                                <td colspan="2" style="padding: 1.5rem 0.5rem; text-align: right; color: #333;">Total
+                                    Paid:</td>
+                                <td style="padding: 1.5rem 0.5rem; text-align: right; color: var(--primary-color);"
+                                    id="display-total"><?php echo format_currency($total); ?></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 2px solid #f0f0f0; padding-top: 2rem;">
+                    <a href="<?php echo BASE_URL; ?>/cart.php"
+                        style="color: #666; text-decoration: none; font-weight: 600;">
+                        <i class="fas fa-arrow-left"></i> Edit Cart
+                    </a>
+                    <button type="submit" class="btn btn-primary"
+                        style="background: var(--primary-color); color: white; border: none; padding: 1.2rem 3rem; border-radius: 12px; font-weight: 800; font-size: 1.2rem; cursor: pointer; box-shadow: 0 4px 15px rgba(255,107,53,0.3); transition: all 0.3s;">
+                        Place Order <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</section>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleBtns = document.querySelectorAll('.toggle-request-btn');
+        const priceInputs = document.querySelectorAll('.request-price-input');
+        const deliverySelect = document.getElementById('deliveryZone');
+        const subtotal = <?php echo $total; ?>;
+
+        function updateTotal() {
+            let extras = 0;
+            priceInputs.forEach(input => {
+                extras += parseFloat(input.value) || 0;
+            });
+
+            const selectedOption = deliverySelect.options[deliverySelect.selectedIndex];
+            const deliveryFee = parseFloat(selectedOption.dataset.fee) || 0;
+
+            document.getElementById('display-extras').textContent = `GH₵${extras.toFixed(2)}`;
+            document.getElementById('display-delivery').textContent = `GH₵${deliveryFee.toFixed(2)}`;
+            document.getElementById('display-total').textContent = `GH₵${(subtotal + extras + deliveryFee).toFixed(2)}`;
+        }
+
+        priceInputs.forEach(input => {
+            input.addEventListener('input', updateTotal);
+        });
+
+        deliverySelect.addEventListener('change', updateTotal);
+
+        // Company Search Logic
+        const companyInput = document.getElementById('companySearch');
+        const companyList = document.getElementById('companyList');
+        const hiddenCompanyId = document.getElementById('selectedCompanyId');
+
+        companyInput.addEventListener('change', function () {
+            const selectedVal = this.value;
+            const options = companyList.options;
+            hiddenCompanyId.value = ''; // Reset
+
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].value === selectedVal) {
+                    hiddenCompanyId.value = options[i].dataset.id;
+                    break;
+                }
+            }
+        });
+
+        toggleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.id;
+                const row = document.getElementById(`request-row-${id}`);
+                const icon = btn.querySelector('i');
+
+                if (row.style.display === 'none') {
+                    row.style.display = 'table-row';
+                    icon.className = 'fas fa-minus';
+                    btn.style.background = '#ff6b35';
+                    btn.style.color = 'white';
+                } else {
+                    row.style.display = 'none';
+                    icon.className = 'fas fa-plus';
+                    btn.style.background = '#f0f0f0';
+                    btn.style.color = '#666';
+                }
+            });
+        });
+    });
+</script>
+
+<?php include 'includes/footer.php'; ?>

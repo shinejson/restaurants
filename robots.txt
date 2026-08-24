@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /includes/
+Disallow: /config/
+Disallow: /auth/
+Disallow: /profile/
+Disallow: /orders/
+Disallow: /cart.php
+Disallow: /checkout.php
+
+Sitemap: https://airportwesthotel.infinityfreeapp.com/sitemap.xml
