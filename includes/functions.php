@@ -210,4 +210,45 @@ function send_order_notifications($order_id)
 
     return true;
 }
+
+/**
+ * Ensure order schema contains dine-in columns
+ * 
+ * @param PDO|null $conn
+ * @return void
+ */
+function ensure_order_schema($conn = null)
+{
+    static $ensured = false;
+    if ($ensured) return;
+
+    if ($conn === null) {
+        global $conn;
+    }
+    if (!$conn) return;
+
+    try {
+        $columns = $conn->query("SHOW COLUMNS FROM orders")->fetchAll(PDO::FETCH_COLUMN);
+        if (!empty($columns)) {
+            $required_columns = [
+                'order_type' => 'VARCHAR(20) NOT NULL DEFAULT "dine_in"',
+                'table_number' => 'VARCHAR(50) NULL',
+                'room_number' => 'VARCHAR(50) NULL',
+                'guest_count' => 'INT NOT NULL DEFAULT 1'
+            ];
+            foreach ($required_columns as $column => $definition) {
+                if (!in_array($column, $columns, true)) {
+                    $conn->exec("ALTER TABLE orders ADD COLUMN `$column` $definition");
+                }
+            }
+        }
+        $ensured = true;
+    } catch (Exception $e) {
+        // Silently skip if database errors occur
+    }
+}
+
+if (isset($conn) && $conn instanceof PDO) {
+    ensure_order_schema($conn);
+}
 ?>

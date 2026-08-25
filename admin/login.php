@@ -76,14 +76,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f4f6fb;
         }
 
         .login-box {
-            background: white;
+            background: rgba(255, 255, 255, 0.96);
             padding: 2.5rem;
             border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
             width: 100%;
             max-width: 400px;
         }
@@ -167,6 +167,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #667eea;
             text-decoration: none;
         }
+
+        .reset-link {
+            display: block;
+            text-align: center;
+            margin-top: 1rem;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -208,6 +217,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <i class="fas fa-sign-in-alt"></i> Login
                 </button>
             </form>
+
+            <a href="<?php echo BASE_URL; ?>/reset_admin_password.php" class="reset-link">
+                <i class="fas fa-key"></i> Forgot admin password?
+            </a>
 
             <div class="back-to-home">
                 <a href="<?php echo BASE_URL; ?>/index.php"><i class="fas fa-arrow-left"></i> Back to Home</a>

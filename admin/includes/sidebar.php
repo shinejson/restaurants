@@ -60,6 +60,30 @@ require_once __DIR__ . '/../../includes/permissions.php';
                         <span class="menu-text">Orders</span>
                     </a>
                 </li>
+                <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'take_order.php' ? 'active' : ''; ?>">
+                    <a href="<?php echo BASE_URL; ?>/admin/orders/take_order.php">
+                        <i class="fas fa-cash-register"></i>
+                        <span class="menu-text">Take Order</span>
+                    </a>
+                </li>
+                <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'kiosk.php' ? 'active' : ''; ?>">
+                    <a href="<?php echo BASE_URL; ?>/admin/orders/kiosk.php">
+                        <i class="fas fa-tablet-alt"></i>
+                        <span class="menu-text">Cashier Kiosk</span>
+                    </a>
+                </li>
+                <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'table_map.php' ? 'active' : ''; ?>">
+                    <a href="<?php echo BASE_URL; ?>/admin/orders/table_map.php">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <span class="menu-text">Table Map</span>
+                    </a>
+                </li>
+                <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'cleaning_log.php' ? 'active' : ''; ?>">
+                    <a href="<?php echo BASE_URL; ?>/admin/orders/cleaning_log.php">
+                        <i class="fas fa-broom"></i>
+                        <span class="menu-text">Cleaning Log</span>
+                    </a>
+                </li>
             <?php endif; ?>
 
             <!-- Events - Manager & Admin only -->
