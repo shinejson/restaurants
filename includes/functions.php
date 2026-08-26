@@ -248,7 +248,88 @@ function ensure_order_schema($conn = null)
     }
 }
 
+function ensure_table_logs_schema($conn = null)
+{
+    static $ensured = false;
+    if ($ensured) return;
+
+    if ($conn === null) {
+        global $conn;
+    }
+    if (!$conn) return;
+
+    try {
+        $conn->exec("CREATE TABLE IF NOT EXISTS table_logs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            table_name VARCHAR(20) NOT NULL,
+            event_type VARCHAR(50) NOT NULL,
+            message VARCHAR(255) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+        $ensured = true;
+    } catch (Exception $e) {
+        // Silently skip if database errors occur
+    }
+}
+
+function ensure_restaurant_tables_schema($conn = null)
+{
+    static $ensured = false;
+    if ($ensured) return;
+
+    if ($conn === null) {
+        global $conn;
+    }
+    if (!$conn) return;
+
+    try {
+        $conn->exec("CREATE TABLE IF NOT EXISTS restaurant_tables (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            table_name VARCHAR(20) NOT NULL UNIQUE,
+            seat_count INT NOT NULL DEFAULT 4,
+            status ENUM('available', 'occupied', 'reserved') NOT NULL DEFAULT 'available',
+            notes VARCHAR(255) NULL,
+            qr_code VARCHAR(500) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
+        $conn->exec("CREATE TABLE IF NOT EXISTS restaurant_seats (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            table_id INT NOT NULL,
+            seat_name VARCHAR(50) NOT NULL,
+            seat_number INT NOT NULL,
+            status ENUM('available', 'occupied') NOT NULL DEFAULT 'available',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (table_id) REFERENCES restaurant_tables(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_seat (table_id, seat_number)
+        )");
+
+        // Populate default seats if missing
+        $tables = $conn->query("SELECT id, table_name, seat_count FROM restaurant_tables")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($tables as $tbl) {
+            $seat_check = $conn->prepare("SELECT COUNT(*) FROM restaurant_seats WHERE table_id = ?");
+            $seat_check->execute([$tbl['id']]);
+            $count = (int)$seat_check->fetchColumn();
+            if ($count == 0) {
+                $count_to_create = max(1, (int)$tbl['seat_count']);
+                for ($i = 1; $i <= $count_to_create; $i++) {
+                    $stmt = $conn->prepare("INSERT INTO restaurant_seats (table_id, seat_name, seat_number) VALUES (?, ?, ?)");
+                    $stmt->execute([$tbl['id'], 'Seat ' . $i, $i]);
+                }
+            }
+        }
+
+        $ensured = true;
+    } catch (Exception $e) {
+        // Silently skip if database errors occur
+    }
+}
+
 if (isset($conn) && $conn instanceof PDO) {
     ensure_order_schema($conn);
+    ensure_table_logs_schema($conn);
+    ensure_restaurant_tables_schema($conn);
 }
 ?>

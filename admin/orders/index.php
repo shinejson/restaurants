@@ -127,6 +127,14 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     body {
         background-color: var(--summary-bg);
+        margin: 0;
+        padding: 0;
+    }
+
+    #bulkActionsForm {
+        margin: -3rem -3rem -3rem -3rem;
+        padding: 0 3rem 1rem 3rem;
+        background-color: var(--summary-bg);
     }
 
     /* Top Navigation Header Bar */
@@ -196,9 +204,11 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .summary-filter-card {
         background: #ffffff;
         border: 1px solid var(--summary-border);
-        border-radius: 8px;
+        border-radius: 0;
         padding: 0.6rem 0.85rem;
-        margin-bottom: 0.75rem;
+        margin: 0 -3rem 0.75rem -3rem;
+        padding-left: calc(0.85rem + 3rem);
+        padding-right: calc(0.85rem + 3rem);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -308,9 +318,11 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .summary-action-card {
         background: #ffffff;
         border: 1px solid var(--summary-border);
-        border-radius: 8px;
+        border-radius: 0;
         padding: 0.55rem 0.85rem;
-        margin-bottom: 0.75rem;
+        margin: 0 -3rem 0.75rem -3rem;
+        padding-left: calc(0.85rem + 3rem);
+        padding-right: calc(0.85rem + 3rem);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -366,8 +378,9 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .summary-table-card {
         background: #ffffff;
         border: 1px solid var(--summary-border);
-        border-radius: 8px;
+        border-radius: 0;
         overflow: hidden;
+        margin: 0 -3rem -1rem -3rem;
     }
 
     .summary-table {
@@ -439,30 +452,21 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         min-width: 75px;
         text-align: right;
     }
-</style>
 
-<!-- Top Header Navigation Bar -->
-<div class="summary-header-bar">
-    <div class="summary-title-group">
-        <i class="fas fa-bars" style="color: #475569; font-size: 1.1rem; cursor: pointer;"></i>
-        <h1>Order Summary</h1>
-    </div>
-    <div class="summary-status-icons">
-        <span class="summary-status-badge"><i class="fas fa-cloud"></i></span>
-        <span class="summary-scanner-badge" title="Scans">
-            <i class="fas fa-qrcode"></i>
-            <span class="count">0</span>
-        </span>
-        <i class="fas fa-mobile-alt" title="Device"></i>
-        <i class="fas fa-bullhorn" title="Notifications"></i>
-        <span style="font-size: 0.82rem; font-weight: 600; color: #334155; display: inline-flex; align-items: center; gap: 0.3rem;">
-            <i class="fas fa-store"></i> AWH (Anniella R...
-        </span>
-        <span style="font-size: 0.82rem; font-weight: 600; color: #334155; display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--summary-border-dark); padding: 0.25rem 0.6rem; border-radius: 6px; background: #ffffff;">
-            <i class="fas fa-building"></i> Airport West H... 57177 <i class="fas fa-chevron-down" style="font-size:0.7rem; margin-left:0.2rem;"></i>
-        </span>
-    </div>
-</div>
+    #bulkActionsForm .alert {
+        margin: 0 -3rem 0.75rem -3rem;
+        padding-left: calc(1rem + 3rem);
+        padding-right: calc(1rem + 3rem);
+    }
+
+    body > .alert {
+        width: 100vw;
+        margin-left: calc(-50vw + 50%);
+        margin-bottom: 0.75rem;
+        padding-left: calc(1rem + 3rem);
+        padding-right: calc(1rem + 3rem);
+    }
+</style>
 
 <?php echo $alert; ?>
 

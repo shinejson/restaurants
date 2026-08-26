@@ -17,29 +17,89 @@ if (empty($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equal
 
 $action = $_POST['action'] ?? '';
 try {
-    // Create logs table if missing
-    $conn->exec("CREATE TABLE IF NOT EXISTS table_logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        table_name VARCHAR(20) NOT NULL,
-        event_type VARCHAR(50) NOT NULL,
-        message VARCHAR(255) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
-
-    // Ensure the dine-in order columns also exist
     ensure_order_schema($conn);
+    ensure_table_logs_schema($conn);
+    ensure_restaurant_tables_schema($conn);
 
-
-    // Support fetch_board via POST for polling
     if ($action === 'fetch_board') {
-        // return tables and unassigned dine-in orders
         $tables = $conn->query("SELECT * FROM restaurant_tables ORDER BY table_name ASC")->fetchAll(PDO::FETCH_ASSOC);
         $unassigned = $conn->query("SELECT id, order_reference, total, created_at FROM orders WHERE order_type='dine_in' AND (table_number IS NULL OR table_number = '') AND status IN ('Placed','Preparing') ORDER BY created_at ASC")->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode(['success' => true, 'tables' => $tables, 'unassigned' => $unassigned]);
         exit;
     }
+
+    if ($action === 'get_seats') {
+        $table_id = (int) ($_POST['table_id'] ?? 0);
+        if ($table_id <= 0) throw new Exception('Invalid table ID');
+
+        $stmt = $conn->prepare("SELECT * FROM restaurant_seats WHERE table_id = ? ORDER BY seat_number ASC");
+        $stmt->execute([$table_id]);
+        $seats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'seats' => $seats]);
+        exit;
+    }
+
+    if ($action === 'save_seats') {
+        $table_id = (int) ($_POST['table_id'] ?? 0);
+        $seats_json = $_POST['seats'] ?? '[]';
+        if ($table_id <= 0) throw new Exception('Invalid table ID');
+
+        $seats = json_decode($seats_json, true);
+        if (!is_array($seats)) throw new Exception('Invalid seats data');
+
+        $conn->prepare("DELETE FROM restaurant_seats WHERE table_id = ?")->execute([$table_id]);
+        $seat_insert = $conn->prepare("INSERT INTO restaurant_seats (table_id, seat_name, seat_number) VALUES (?, ?, ?)");
+
+        foreach ($seats as $index => $seat_name) {
+            $name = trim($seat_name) !== '' ? trim($seat_name) : 'Seat ' . ($index + 1);
+            $seat_insert->execute([$table_id, $name, ($index + 1)]);
+        }
+
+        $new_count = count($seats);
+        $conn->prepare("UPDATE restaurant_tables SET seat_count = ? WHERE id = ?")->execute([$new_count, $table_id]);
+
+        echo json_encode(['success' => true, 'message' => 'Seats updated successfully']);
+        exit;
+    }
+
+    if ($action === 'create_table') {
+        $table_name = trim($_POST['table_name'] ?? '');
+        $seat_count = max(1, (int) ($_POST['seat_count'] ?? 4));
+        $status = in_array($_POST['status'] ?? '', ['available', 'occupied', 'reserved'], true) ? $_POST['status'] : 'available';
+        $notes = trim($_POST['notes'] ?? '');
+
+        if ($table_name === '') throw new Exception('Table name is required');
+
+        $check = $conn->prepare("SELECT id FROM restaurant_tables WHERE table_name = ?");
+        $check->execute([$table_name]);
+        if ($check->fetch()) throw new Exception('Table name already exists');
+
+        $qr_url = BASE_URL . '/customer_order.php?table_name=' . urlencode($table_name);
+
+        $stmt = $conn->prepare("INSERT INTO restaurant_tables (table_name, seat_count, status, notes, qr_code) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$table_name, $seat_count, $status, $notes, $qr_url]);
+        $table_id = $conn->lastInsertId();
+
+        for ($i = 1; $i <= $seat_count; $i++) {
+            $seat_stmt = $conn->prepare("INSERT INTO restaurant_seats (table_id, seat_name, seat_number) VALUES (?, ?, ?)");
+            $seat_stmt->execute([$table_id, 'Seat ' . $i, $i]);
+        }
+
+        echo json_encode(['success' => true, 'message' => 'Table created successfully', 'table_id' => $table_id]);
+        exit;
+    }
+
+    if ($action === 'delete_table') {
+        $table_id = (int) ($_POST['table_id'] ?? 0);
+        if ($table_id <= 0) throw new Exception('Invalid table ID');
+
+        $conn->prepare("DELETE FROM restaurant_tables WHERE id = ?")->execute([$table_id]);
+        echo json_encode(['success' => true, 'message' => 'Table deleted successfully']);
+        exit;
+    }
+
     if ($action === 'update_table') {
-        $table_name = $_POST['table_name'] ?? '';
+        $table_name = trim($_POST['table_name'] ?? '');
         $seat_count = max(1, (int) ($_POST['seat_count'] ?? 2));
         $status = in_array($_POST['status'] ?? '', ['available', 'occupied', 'reserved'], true) ? $_POST['status'] : 'available';
         $notes = $_POST['notes'] ?? null;
@@ -54,11 +114,8 @@ try {
     if ($action === 'assign_order') {
         $table_name = $_POST['table_name'] ?? '';
         $order_id = (int) ($_POST['order_id'] ?? 0);
-        if ($order_id <= 0 || $table_name === '') {
-            throw new Exception('Missing parameters');
-        }
+        if ($order_id <= 0 || $table_name === '') throw new Exception('Missing parameters');
 
-        // assign order to table and mark table occupied
         $u1 = $conn->prepare("UPDATE orders SET table_number = ? WHERE id = ?");
         $u1->execute([$table_name, $order_id]);
 
@@ -73,12 +130,9 @@ try {
         $table_name = $_POST['table_name'] ?? '';
         if ($table_name === '') throw new Exception('Missing table_name');
 
-        // clear any table assignment from completed orders if needed (optional)
-        // mark table available
         $stmt = $conn->prepare("UPDATE restaurant_tables SET status = 'available', notes = NULL WHERE table_name = ?");
         $stmt->execute([$table_name]);
 
-        // Log cleaning event
         $log = $conn->prepare("INSERT INTO table_logs (table_name, event_type, message) VALUES (?, 'cleaned', ?)");
         $log->execute([$table_name, 'Marked as cleaned']);
 
@@ -90,7 +144,6 @@ try {
         $table_name = $_POST['table_name'] ?? '';
         if ($table_name === '') throw new Exception('Missing table_name');
 
-        // Find order assigned to this table and clear it
         $stmt = $conn->prepare("SELECT id FROM orders WHERE table_number = ? AND status IN ('Placed','Preparing','On the Way') LIMIT 1");
         $stmt->execute([$table_name]);
         $order = $stmt->fetch();
@@ -99,11 +152,9 @@ try {
             $u->execute([$order['id']]);
         }
 
-        // Mark table available
         $u2 = $conn->prepare("UPDATE restaurant_tables SET status = 'available' WHERE table_name = ?");
         $u2->execute([$table_name]);
 
-        // Log release
         $log = $conn->prepare("INSERT INTO table_logs (table_name, event_type, message) VALUES (?, 'released', ?)");
         $log->execute([$table_name, 'Table released / order unassigned']);
 

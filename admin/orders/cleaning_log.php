@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+ensure_table_logs_schema($conn);
 $logs = $conn->query("SELECT * FROM table_logs ORDER BY created_at DESC LIMIT 1000")->fetchAll();
 
 $admin_title = 'Table Cleaning Log';
