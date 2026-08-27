@@ -112,9 +112,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && hash
 
 // Fetch active orders mapped to tables
 $active_orders = [];
-$orders_stmt = $conn->query("SELECT table_number, order_reference, status, guest_count FROM orders WHERE order_type = 'dine_in' AND table_number IS NOT NULL AND table_number <> '' AND status IN ('Placed','Preparing','On the Way') ORDER BY created_at DESC");
+$orders_stmt = $conn->query("SELECT id, table_number, order_reference, status, guest_count FROM orders WHERE order_type = 'dine_in' AND table_number IS NOT NULL AND table_number <> '' AND status IN ('Placed','Preparing','On the Way') ORDER BY created_at DESC");
 foreach ($orders_stmt as $order) {
-    $active_orders[$order['table_number']] = $order;
+    if (!isset($active_orders[$order['table_number']])) {
+        $active_orders[$order['table_number']] = $order;
+    }
 }
 
 // Fetch tables with seats
@@ -125,6 +127,26 @@ $all_seats = [];
 $seat_stmt = $conn->query("SELECT * FROM restaurant_seats ORDER BY table_id ASC, seat_number ASC")->fetchAll(PDO::FETCH_ASSOC);
 foreach ($seat_stmt as $seat) {
     $all_seats[$seat['table_id']][] = $seat;
+}
+
+// Load each active table order's items, categories, and menu details in one query.
+$order_previews = [];
+$active_order_ids = array_values(array_unique(array_map('intval', array_column($active_orders, 'id'))));
+if (!empty($active_order_ids)) {
+    $placeholders = implode(',', array_fill(0, count($active_order_ids), '?'));
+    $preview_stmt = $conn->prepare("SELECT oi.order_id, oi.quantity, oi.price, oi.request_price,
+            oi.special_requests, oi.recipient_name, fi.item_name, fi.description,
+            sc.name AS sub_category_name, mc.name AS main_category_name
+        FROM order_items oi
+        INNER JOIN food_items fi ON fi.id = oi.food_item_id
+        LEFT JOIN sub_categories sc ON sc.id = fi.sub_category_id
+        LEFT JOIN main_categories mc ON mc.id = sc.main_category_id
+        WHERE oi.order_id IN ($placeholders)
+        ORDER BY oi.order_id ASC, oi.id ASC");
+    $preview_stmt->execute($active_order_ids);
+    foreach ($preview_stmt->fetchAll(PDO::FETCH_ASSOC) as $preview_item) {
+        $order_previews[(int) $preview_item['order_id']][] = $preview_item;
+    }
 }
 
 $admin_title = 'Table Map & QR Management';
@@ -369,6 +391,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
                 $display_label = $display_status === 'occupied' ? 'Occupied' : ($display_status === 'reserved' ? 'Reserved' : 'Available');
 
                 $table_seats = $all_seats[$table_id] ?? [];
+                $table_preview_items = $is_live_occupied ? ($order_previews[(int) $live_order['id']] ?? []) : [];
                 ?>
                 <div draggable="true" class="table-card <?php echo $display_status; ?>" data-table-name="<?php echo htmlspecialchars($table_name); ?>" data-table-id="<?php echo $table_id; ?>">
                     <div>
@@ -387,6 +410,36 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
                             <?php else: ?>
                                 <div><strong>Available Seats:</strong> <?php echo $seat_count; ?></div>
                                 <div style="font-size:0.8rem; color:#64748b; margin-top:0.2rem;"><?php echo !empty($notes) ? htmlspecialchars($notes) : 'Ready for seating'; ?></div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Current Order Preview -->
+                        <div style="margin:0.75rem 0; border:1px solid #fed7aa; border-radius:10px; overflow:hidden; background:#fff;">
+                            <div style="display:flex; justify-content:space-between; gap:0.5rem; padding:0.55rem 0.65rem; background:#fff7ed; color:#9a4d00; font-size:0.76rem; font-weight:800;">
+                                <span><i class="fas fa-clipboard-list"></i> Table Preview</span>
+                                <?php if ($is_live_occupied): ?><span><?php echo count($table_preview_items); ?> item<?php echo count($table_preview_items) === 1 ? '' : 's'; ?></span><?php endif; ?>
+                            </div>
+                            <?php if ($is_live_occupied && !empty($table_preview_items)): ?>
+                                <?php foreach ($table_preview_items as $preview_item): ?>
+                                    <?php
+                                    $categories = array_filter([$preview_item['main_category_name'] ?? '', $preview_item['sub_category_name'] ?? '']);
+                                    $category = !empty($categories) ? implode(' / ', $categories) : 'Uncategorised';
+                                    $details = [];
+                                    if (!empty($preview_item['description'])) $details[] = $preview_item['description'];
+                                    if (!empty($preview_item['recipient_name'])) $details[] = 'For: ' . $preview_item['recipient_name'];
+                                    $line_total = ((float) $preview_item['price'] * (int) $preview_item['quantity']) + (float) ($preview_item['request_price'] ?? 0);
+                                    ?>
+                                    <div style="padding:0.65rem; border-top:1px solid #ffedd5; font-size:0.78rem; color:#334155;">
+                                        <div style="display:flex; justify-content:space-between; gap:0.5rem;"><strong><?php echo (int) $preview_item['quantity']; ?> x <?php echo htmlspecialchars($preview_item['item_name']); ?></strong><span style="white-space:nowrap; font-weight:700;"><?php echo format_currency($line_total); ?></span></div>
+                                        <div style="margin-top:0.25rem; color:#9a4d00; font-size:0.7rem; font-weight:700;"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($category); ?></div>
+                                        <?php if (!empty($details)): ?><div style="margin-top:0.3rem; color:#64748b; font-size:0.72rem; line-height:1.35;"><?php echo htmlspecialchars(implode(' / ', $details)); ?></div><?php endif; ?>
+                                        <?php if (!empty($preview_item['special_requests'])): ?><div style="margin-top:0.35rem; padding:0.35rem 0.45rem; border-radius:5px; background:#fff3cd; color:#92400e; font-size:0.72rem;"><i class="fas fa-comment-dots"></i> <?php echo htmlspecialchars($preview_item['special_requests']); ?></div><?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php elseif ($is_live_occupied): ?>
+                                <div style="padding:0.65rem; color:#64748b; font-size:0.75rem;">This live order does not contain any items yet.</div>
+                            <?php else: ?>
+                                <div style="padding:0.65rem; color:#64748b; font-size:0.75rem;"><i class="fas fa-info-circle"></i> No active order. Items, categories, and requests will appear here.</div>
                             <?php endif; ?>
                         </div>
 
