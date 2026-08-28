@@ -66,6 +66,12 @@ require_once __DIR__ . '/../../includes/permissions.php';
                         <span class="menu-text">Take Order</span>
                     </a>
                 </li>
+                <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'guest_table_order.php' ? 'active' : ''; ?>">
+                    <a href="<?php echo BASE_URL; ?>/admin/orders/guest_table_order.php">
+                        <i class="fas fa-concierge-bell"></i>
+                        <span class="menu-text">Guest Table Order</span>
+                    </a>
+                </li>
                 <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'kiosk.php' ? 'active' : ''; ?>">
                     <a href="<?php echo BASE_URL; ?>/admin/orders/kiosk.php">
                         <i class="fas fa-tablet-alt"></i>
