@@ -37,53 +37,82 @@ $admin_title = 'Table Cleaning Log';
 include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 ?>
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+<style>
+    :root {
+        --cl-card-bg: var(--white, #ffffff);
+        --cl-border: var(--border-color, #edf2f7);
+        --cl-text-main: var(--text-main, #111827);
+        --cl-text-muted: var(--text-muted, #64748b);
+        --cl-danger: var(--danger-color, #ef4444);
+        --cl-danger-strong: var(--danger-color, #dc2626);
+    }
+    html[data-theme="dark"] {
+        --cl-card-bg: var(--white);
+        --cl-border: var(--border-color);
+        --cl-text-main: var(--text-main);
+        --cl-text-muted: var(--text-muted);
+    }
+    .cl-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+    .cl-panel { background: var(--cl-card-bg); border:1px solid var(--cl-border); border-radius:12px; padding:1rem; }
+    .cl-title { margin:0; font-size:1.6rem; color:var(--cl-text-main;); }
+    .muted-note { color:var(--cl-text-muted); margin:0.4rem 0 0; }
+    .btn-submit { padding:0.6rem 0.9rem; border-radius:8px; border:none; font-weight:800; cursor:pointer; }
+    .btn-neutral { background:var(--cl-card-bg); color:var(--cl-text-main); border:1px solid var(--cl-border); }
+    .btn-danger { background:var(--cl-danger); color:var(--cl-card-bg); }
+    table.cl-table { width:100%; border-collapse:collapse; }
+    table.cl-table th { text-align:left; color:var(--cl-text-muted); font-weight:700; padding:0.6rem; border-bottom:1px solid var(--cl-border); }
+    .cl-cell { padding:0.65rem; border-bottom:1px solid var(--cl-border); color:var(--cl-text-main); }
+    .cl-empty { padding:0.8rem; color:var(--cl-text-muted); }
+    .danger-btn { background: rgba(254,226,226,0.9); color: var(--cl-danger-strong); border:none; padding:0.4rem 0.6rem; border-radius:6px; font-weight:700; cursor:pointer; }
+</style>
+
+<div class="cl-header">
     <div>
-        <h1 style="margin:0; font-size:1.6rem;">Table Cleaning Log</h1>
-        <p style="margin:0.4rem 0 0; color:var(--text-muted);">History of table cleaning, releases and related events.</p>
+        <h1 class="cl-title">Table Cleaning Log</h1>
+        <p class="muted-note">History of table cleaning, releases and related events.</p>
     </div>
     <div style="display:flex; gap:0.5rem;">
-        <a href="table_map.php" class="btn-submit" style="text-decoration:none;">Open Table Board</a>
+        <a href="table_map.php" class="btn-submit btn-neutral" style="text-decoration:none;">Open Table Board</a>
     </div>
 </div>
 
 <?php echo $message; ?>
 
-<div style="background:#fff; border:1px solid #edf2f7; border-radius:12px; padding:1rem;">
+<div class="cl-panel">
     <form method="POST" style="margin-bottom:0.8rem;">
         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
         <input type="hidden" name="action" value="clear_all">
-        <button type="submit" class="btn-submit" style="background:#ef4444;">Clear All Logs</button>
+        <button type="submit" class="btn-submit btn-danger">Clear All Logs</button>
     </form>
 
-    <table style="width:100%; border-collapse:collapse;">
+    <table class="cl-table">
         <thead>
-            <tr style="text-align:left; color:#64748b; font-weight:700;">
-                <th style="padding:0.6rem; border-bottom:1px solid #edf2f7;">ID</th>
-                <th style="padding:0.6rem; border-bottom:1px solid #edf2f7;">Table</th>
-                <th style="padding:0.6rem; border-bottom:1px solid #edf2f7;">Event</th>
-                <th style="padding:0.6rem; border-bottom:1px solid #edf2f7;">Message</th>
-                <th style="padding:0.6rem; border-bottom:1px solid #edf2f7;">When</th>
-                <th style="padding:0.6rem; border-bottom:1px solid #edf2f7;">Action</th>
+            <tr>
+                <th>ID</th>
+                <th>Table</th>
+                <th>Event</th>
+                <th>Message</th>
+                <th>When</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody>
             <?php if (empty($logs)): ?>
-                <tr><td colspan="6" style="padding:0.8rem; color:#64748b;">No logs yet.</td></tr>
+                <tr><td colspan="6" class="cl-empty">No logs yet.</td></tr>
             <?php else: ?>
                 <?php foreach ($logs as $log): ?>
                     <tr>
-                        <td style="padding:0.65rem; border-bottom:1px solid #f1f5f9;"><?php echo (int)$log['id']; ?></td>
-                        <td style="padding:0.65rem; border-bottom:1px solid #f1f5f9;"><?php echo htmlspecialchars($log['table_name']); ?></td>
-                        <td style="padding:0.65rem; border-bottom:1px solid #f1f5f9;"><?php echo htmlspecialchars($log['event_type']); ?></td>
-                        <td style="padding:0.65rem; border-bottom:1px solid #f1f5f9;"><?php echo htmlspecialchars($log['message']); ?></td>
-                        <td style="padding:0.65rem; border-bottom:1px solid #f1f5f9;"><?php echo htmlspecialchars($log['created_at']); ?></td>
-                        <td style="padding:0.65rem; border-bottom:1px solid #f1f5f9;">
+                        <td class="cl-cell"><?php echo (int)$log['id']; ?></td>
+                        <td class="cl-cell"><?php echo htmlspecialchars($log['table_name']); ?></td>
+                        <td class="cl-cell"><?php echo htmlspecialchars($log['event_type']); ?></td>
+                        <td class="cl-cell"><?php echo htmlspecialchars($log['message']); ?></td>
+                        <td class="cl-cell"><?php echo htmlspecialchars($log['created_at']); ?></td>
+                        <td class="cl-cell">
                             <form method="POST" style="display:inline;">
                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="id" value="<?php echo (int)$log['id']; ?>">
-                                <button type="submit" style="background:#fee2e2; color:#991b1b; border:none; padding:0.4rem 0.6rem; border-radius:6px; font-weight:700;">Delete</button>
+                                <button type="submit" class="danger-btn">Delete</button>
                             </form>
                         </td>
                     </tr>

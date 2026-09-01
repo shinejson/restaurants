@@ -75,7 +75,7 @@ if (isset($_SESSION['admin_id'])) {
             </button>
             <div class="dropdown-content" id="profileDropdown">
                 <a href="javascript:void(0)" id="openProfileModal"><i class="fas fa-user-circle"></i> My Profile</a>
-                <a href="#"><i class="fas fa-cog"></i> Settings</a>
+                <a href="<?php echo BASE_URL; ?>/admin/settings.php"><i class="fas fa-cog"></i> Settings</a>
                 <hr>
                 <a href="<?php echo BASE_URL; ?>/admin/logout.php" class="text-danger"><i
                         class="fas fa-sign-out-alt"></i> Logout</a>
@@ -299,7 +299,7 @@ if (isset($_SESSION['admin_id'])) {
             openBtn.onclick = function (e) {
                 e.preventDefault();
                 modal.classList.add('active');
-                document.getElementById('profileDropdown').classList.remove('active');
+                document.getElementById('profileDropdown').classList.remove('show');
             }
         }
 

@@ -233,17 +233,11 @@ include 'includes/admin_header.php';
             </thead>
             <tbody>
                 <?php
-                // Try to get today's orders first
+                // Only show orders placed today
                 $today = date('Y-m-d');
                 $stmt = $conn->prepare("SELECT o.*, u.username FROM orders o JOIN customers u ON o.user_id = u.id WHERE DATE(o.created_at) = ? ORDER BY o.created_at DESC LIMIT 10");
                 $stmt->execute([$today]);
                 $recent_orders = $stmt->fetchAll();
-
-                // Fallback to absolute latest if today is empty
-                if (empty($recent_orders)) {
-                    $stmt = $conn->query("SELECT o.*, u.username FROM orders o JOIN customers u ON o.user_id = u.id ORDER BY o.created_at DESC LIMIT 5");
-                    $recent_orders = $stmt->fetchAll();
-                }
 
                 foreach ($recent_orders as $order):
                     $curr_status = $order['status'] ?: 'Pending';
@@ -280,6 +274,14 @@ include 'includes/admin_header.php';
                         </td>
                     </tr>
                 <?php endforeach; ?>
+                <?php if (empty($recent_orders)): ?>
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <i class="fas fa-inbox" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem; opacity: 0.5;"></i>
+                            No orders placed today (<?php echo date('M d, Y'); ?>)
+                        </td>
+                    </tr>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>

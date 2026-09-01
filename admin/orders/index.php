@@ -116,13 +116,28 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 ?>
 
 <style>
+    /* Local mappings to the global admin theme variables */
     :root {
-        --summary-bg: #f3f4f6;
-        --summary-border: #e5e7eb;
+        --summary-bg: var(--light-bg, #f3f4f6);
+        --summary-border: var(--border-color, #e5e7eb);
         --summary-border-dark: #d1d5db;
-        --summary-text-main: #1f2937;
-        --summary-text-muted: #6b7280;
-        --summary-card-bg: #ffffff;
+        --summary-text-main: var(--text-main, #1f2937);
+        --summary-text-muted: var(--text-muted, #6b7280);
+        --summary-card-bg: var(--white, #ffffff);
+        --summary-card-alt: #f8fafc;
+        --summary-row-hover: #f8fafc;
+    }
+
+    /* Override page-specific variables when admin dark theme is active */
+    html[data-theme="dark"] {
+        --summary-bg: var(--light-bg);
+        --summary-border: var(--border-color);
+        --summary-border-dark: #2d3748;
+        --summary-text-main: var(--text-main);
+        --summary-text-muted: var(--text-muted);
+        --summary-card-bg: var(--white);
+        --summary-card-alt: rgba(255,255,255,0.03);
+        --summary-row-hover: rgba(255,255,255,0.02);
     }
 
     body {
@@ -142,7 +157,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: #ffffff;
+        background: var(--summary-card-bg);
         border: 1px solid var(--summary-border);
         border-radius: 8px;
         padding: 0.6rem 1rem;
@@ -202,7 +217,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     /* Top Filter Bar */
     .summary-filter-card {
-        background: #ffffff;
+        background: var(--summary-card-bg);
         border: 1px solid var(--summary-border);
         border-radius: 0;
         padding: 0.6rem 0.85rem;
@@ -238,7 +253,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: flex;
         align-items: center;
         gap: 0.35rem;
-        background: #f8fafc;
+        background: var(--summary-card-alt);
         border: 1px solid var(--summary-border);
         border-radius: 6px;
         padding: 0.25rem;
@@ -301,7 +316,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .summary-search-wrap i {
         position: absolute;
         left: 0.75rem;
-        color: #94a3b8;
+        color: var(--summary-text-muted);
         font-size: 0.85rem;
     }
 
@@ -316,7 +331,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     /* Bulk Action Bar */
     .summary-action-card {
-        background: #ffffff;
+        background: var(--summary-card-bg);
         border: 1px solid var(--summary-border);
         border-radius: 0;
         padding: 0.55rem 0.85rem;
@@ -376,7 +391,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     /* Orders Table */
     .summary-table-card {
-        background: #ffffff;
+        background: var(--summary-card-bg);
         border: 1px solid var(--summary-border);
         border-radius: 0;
         overflow: hidden;
@@ -391,23 +406,23 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .summary-table th {
-        background: #f8fafc;
+        background: var(--summary-card-alt);
         padding: 0.65rem 0.85rem;
         font-weight: 700;
-        color: #475569;
+        color: var(--summary-text-muted);
         border-bottom: 1px solid var(--summary-border);
         white-space: nowrap;
     }
 
     .summary-table td {
         padding: 0.65rem 0.85rem;
-        border-bottom: 1px solid #f1f5f9;
-        color: #334155;
+        border-bottom: 1px solid var(--summary-border);
+        color: var(--summary-text-main);
         vertical-align: middle;
     }
 
     .summary-table tr:hover td {
-        background: #f8fafc;
+        background: var(--summary-row-hover);
     }
 
     /* Badges */

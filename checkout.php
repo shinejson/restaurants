@@ -31,7 +31,7 @@ $delivery_zones = $conn->query("SELECT * FROM delivery_zones ORDER BY zone_name"
 $total = 0;
 $cart_items_details = [];
 foreach ($_SESSION['cart'] as $id => $qty) {
-    $stmt = $conn->prepare("SELECT item_name, price, promo_price, description FROM food_items WHERE id = ?");
+    $stmt = $conn->prepare("SELECT item_name, price, promo_price, description, tax_group_id, tax_group, is_rate_inclusive FROM food_items WHERE id = ?");
     $stmt->execute([$id]);
     $item = $stmt->fetch();
     if ($item) {
@@ -46,9 +46,20 @@ foreach ($_SESSION['cart'] as $id => $qty) {
             'description' => $item['description'],
             'price' => $price,
             'qty' => $qty,
-            'subtotal' => $subtotal
+            'subtotal' => $subtotal,
+            'tax_group_id' => $item['tax_group_id'],
+            'tax_group' => $item['tax_group'],
+            'is_rate_inclusive' => $item['is_rate_inclusive']
         ];
     }
+}
+
+// Group cart items by tax group & compute the tax breakdown
+// (taxes are INCLUDED in the item prices — they are extracted, not added)
+$tax_grouped = group_items_by_tax($cart_items_details);
+$total_tax_included = 0;
+foreach ($tax_grouped as $tg) {
+    $total_tax_included += $tg['total_tax'];
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['csrf']) && $_POST['csrf'] == $_SESSION['csrf_token']) {
@@ -179,7 +190,22 @@ include 'includes/header.php';
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($cart_items_details as $item): ?>
+                            <?php foreach ($tax_grouped as $tgroup): ?>
+                                <!-- Tax group separator -->
+                                <tr style="background: #f8f9fa;">
+                                    <td colspan="4"
+                                        style="padding: 0.9rem 0.5rem; font-weight: 700; color: #555; border-bottom: 1px solid #eee; font-size: 0.9rem;">
+                                        <i class="fas fa-layer-group" style="color: var(--primary-color);"></i>
+                                        <?php echo $tgroup['config'] ? 'Tax Group: ' . htmlspecialchars($tgroup['name']) : 'No Tax Group'; ?>
+                                        <?php if ($tgroup['config'] && $tgroup['total_rate'] > 0): ?>
+                                            <span
+                                                style="background: rgba(255,107,53,.12); color: var(--primary-color); padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-left: 0.5rem;">
+                                                <?php echo number_format($tgroup['total_rate'] * 100, 2); ?>% (included in prices)
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php foreach ($tgroup['items'] as $item): ?>
                                 <tr style="border-bottom: 1px solid #f9f9f9;">
                                     <td style="padding: 1.5rem 0.5rem;">
                                         <div style="font-weight: 700; color: #333;">
@@ -235,6 +261,7 @@ include 'includes/header.php';
                                         </div>
                                     </td>
                                 </tr>
+                                <?php endforeach; ?>
                             <?php endforeach; ?>
                         </tbody>
                         <tfoot>
@@ -246,6 +273,17 @@ include 'includes/header.php';
                                     id="display-subtotal"><?php echo format_currency($total); ?></td>
                                 <td></td>
                             </tr>
+                            <?php if ($total_tax_included > 0): ?>
+                                <tr>
+                                    <td colspan="2"
+                                        style="padding: 0.4rem 0.5rem; text-align: right; color: #aaa; font-weight: 600; font-size: 0.9rem;">
+                                        (of which taxes included):</td>
+                                    <td
+                                        style="padding: 0.4rem 0.5rem; text-align: right; color: #aaa; font-weight: 600; font-size: 0.9rem;">
+                                        <?php echo format_currency($total_tax_included); ?></td>
+                                    <td></td>
+                                </tr>
+                            <?php endif; ?>
                             <tr>
                                 <td colspan="2"
                                     style="padding: 0.5rem; text-align: right; color: #888; font-weight: 600;">Optional
@@ -271,6 +309,52 @@ include 'includes/header.php';
                             </tr>
                         </tfoot>
                     </table>
+                </div>
+
+                <!-- Tax Summary (taxes are already included in the item prices) -->
+                <div
+                    style="background: #fff8f3; border: 1px solid #ffe0cc; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h4 style="margin: 0 0 1rem; color: #333;">
+                        <i class="fas fa-percentage" style="color: var(--primary-color);"></i> Tax Summary
+                        <span style="font-weight: 400; color: #888; font-size: 0.85rem;">(already included in item
+                            prices)</span>
+                    </h4>
+                    <?php foreach ($tax_grouped as $tgroup): ?>
+                        <div style="margin-bottom: 1rem;">
+                            <div style="font-weight: 700; color: #555; margin-bottom: 0.4rem;">
+                                <?php echo $tgroup['config'] ? htmlspecialchars($tgroup['name']) : 'No Tax Group'; ?>
+                                <?php if ($tgroup['config'] && $tgroup['total_rate'] > 0): ?>
+                                    <span style="font-weight: 400; color: #888;">—
+                                        <?php echo number_format($tgroup['total_rate'] * 100, 2); ?>% combined</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($tgroup['components'])): ?>
+                                <?php foreach ($tgroup['components'] as $comp): ?>
+                                    <div
+                                        style="display: flex; justify-content: space-between; padding: 0.25rem 0 0.25rem 1rem; color: #666;">
+                                        <span><?php echo htmlspecialchars($comp['name']); ?>
+                                            (<?php echo number_format($comp['rate'] * 100, 2); ?>%)</span>
+                                        <span><?php echo format_currency($comp['amount']); ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                                <div
+                                    style="display: flex; justify-content: space-between; padding: 0.4rem 0 0.25rem 1rem; font-weight: 700; color: #333; border-top: 1px dashed #ffd9b8; margin-top: 0.3rem;">
+                                    <span>Total tax in this group</span>
+                                    <span><?php echo format_currency($tgroup['total_tax']); ?></span>
+                                </div>
+                            <?php else: ?>
+                                <div style="padding-left: 1rem; color: #999; font-size: 0.9rem;">No active taxes
+                                    configured for this group yet.</div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                    <?php if ($total_tax_included > 0): ?>
+                        <div
+                            style="display: flex; justify-content: space-between; font-weight: 800; color: #333; border-top: 2px solid #ffe0cc; padding-top: 0.8rem;">
+                            <span>Total tax included in your order</span>
+                            <span style="color: var(--primary-color);"><?php echo format_currency($total_tax_included); ?></span>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div

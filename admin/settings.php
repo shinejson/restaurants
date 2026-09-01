@@ -11,15 +11,40 @@ require_permission('manage_settings');
 // Handle settings update
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['csrf_token']) && $_POST['csrf_token'] == $_SESSION['csrf_token']) {
     try {
+        // Handle company logo upload
+        if (isset($_FILES['company_logo']) && $_FILES['company_logo']['error'] === UPLOAD_ERR_OK) {
+            $upload_dir = '../assets/uploads/company/';
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            $ext = strtolower(pathinfo($_FILES['company_logo']['name'], PATHINFO_EXTENSION));
+            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'svg'])) {
+                $filename = 'logo_' . uniqid() . '.' . $ext;
+                if (move_uploaded_file($_FILES['company_logo']['tmp_name'], $upload_dir . $filename)) {
+                    $_POST['settings']['company_logo'] = 'assets/uploads/company/' . $filename;
+                }
+            }
+        }
+
         $conn->beginTransaction();
+        $stmt = $conn->prepare("INSERT INTO settings (category, setting_key, setting_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
         foreach ($_POST['settings'] as $key => $value) {
-            $stmt = $conn->prepare("UPDATE settings SET setting_value = ? WHERE setting_key = ?");
-            $stmt->execute([$value, $key]);
+            // Infer the category from the key prefix (matches existing rows)
+            if (strpos($key, 'smtp_') === 0) {
+                $category = 'email';
+            } elseif (strpos($key, 'contact_') === 0) {
+                $category = 'contact';
+            } else {
+                $category = 'company';
+            }
+            $stmt->execute([$category, $key, $value]);
         }
         $conn->commit();
         $_SESSION['success_msg'] = "Settings updated successfully.";
     } catch (Exception $e) {
-        $conn->rollBack();
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
         $_SESSION['error_msg'] = "Error updating settings: " . $e->getMessage();
     }
     header("Location: settings.php" . (isset($_POST['active_tab']) ? "?tab=" . $_POST['active_tab'] : ""));
@@ -74,25 +99,87 @@ include 'includes/admin_header.php';
 
     <!-- Tab Content -->
     <div style="padding: 2.5rem;">
-        <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
             <input type="hidden" name="active_tab" value="<?php echo $active_tab; ?>">
 
             <?php if ($active_tab == 'company'): ?>
-                <div style="display: grid; gap: 1.5rem; max-width: 600px;">
+                <div style="display: grid; gap: 1.5rem; max-width: 700px;">
+
+                    <!-- Company Logo -->
+                    <div style="display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; background: var(--light-bg); padding: 1.25rem; border-radius: 12px;">
+                        <div
+                            style="width: 90px; height: 90px; border: 1px solid var(--border-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: white; flex-shrink: 0;">
+                            <?php if (!empty($settings['company']['company_logo'])): ?>
+                                <img src="../<?php echo htmlspecialchars($settings['company']['company_logo']); ?>"
+                                    style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                            <?php else: ?>
+                                <i class="fas fa-image fa-2x" style="color: #cbd5e1;"></i>
+                            <?php endif; ?>
+                        </div>
+                        <div style="flex: 1; min-width: 250px;">
+                            <label
+                                style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">Company
+                                Logo</label>
+                            <input type="file" name="company_logo" accept="image/*"
+                                style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-color); border-radius: 8px; background: white;">
+                            <small style="color: #777; display: block; margin-top: 0.3rem;">Shown on receipts and printed
+                                tickets. JPG, PNG, WebP or SVG.</small>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div>
+                            <label style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">Restaurant
+                                Name</label>
+                            <input type="text" name="settings[company_name]"
+                                value="<?php echo htmlspecialchars($settings['company']['company_name'] ?? ''); ?>"
+                                style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">TIN Number
+                                (Tax Identification)</label>
+                            <input type="text" name="settings[company_tin]"
+                                value="<?php echo htmlspecialchars($settings['company']['company_tin'] ?? ''); ?>"
+                                placeholder="e.g. C0001234567-1"
+                                style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div>
+                            <label style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">VAT
+                                Registration Number</label>
+                            <input type="text" name="settings[company_vat_reg]"
+                                value="<?php echo htmlspecialchars($settings['company']['company_vat_reg'] ?? ''); ?>"
+                                placeholder="e.g. VAT-1234567"
+                                style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">Location
+                                (Branch / Area)</label>
+                            <input type="text" name="settings[company_location]"
+                                value="<?php echo htmlspecialchars($settings['company']['company_location'] ?? ''); ?>"
+                                placeholder="e.g. Osu - Accra, near Independence Square"
+                                style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px;">
+                        </div>
+                    </div>
+
                     <div>
-                        <label style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">Restaurant
-                            Name</label>
-                        <input type="text" name="settings[company_name]"
-                            value="<?php echo htmlspecialchars($settings['company']['company_name'] ?? ''); ?>"
+                        <label style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">Website</label>
+                        <input type="url" name="settings[company_website]"
+                            value="<?php echo htmlspecialchars($settings['company']['company_website'] ?? ''); ?>"
+                            placeholder="e.g. https://www.yourrestaurant.com"
                             style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px;">
                     </div>
+
                     <div>
                         <label style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">Company Bio /
                             Tagline</label>
                         <textarea name="settings[company_info]"
                             style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px; min-height: 100px;"><?php echo htmlspecialchars($settings['company']['company_info'] ?? ''); ?></textarea>
                     </div>
+
                     <div>
                         <label style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">Site Favicon
                             Path</label>

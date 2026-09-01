@@ -21,7 +21,12 @@
 
 <body>
     <div class="admin-container">
-        <?php include dirname(__FILE__) . '/sidebar.php'; ?>
+        <?php
+        // Pages can set $hide_sidebar = true to render full-width (e.g. Reports opened in a new tab)
+        if (empty($hide_sidebar)) {
+            include dirname(__FILE__) . '/sidebar.php';
+        }
+        ?>
 
         <div class="admin-main">
             <?php include dirname(__FILE__) . '/topnav.php'; ?>

@@ -31,10 +31,11 @@ $status = isset($_GET['status']) ? clean_input($_GET['status']) : '';
 $dietary = isset($_GET['dietary']) ? clean_input($_GET['dietary']) : '';
 
 // Build query
-$query = "SELECT fi.*, sc.name as sub_category, mc.name as main_category 
+$query = "SELECT fi.*, sc.name as sub_category, mc.name as main_category, p.name AS printer_name, p.type AS printer_type
           FROM food_items fi 
           JOIN sub_categories sc ON fi.sub_category_id = sc.id 
           JOIN main_categories mc ON sc.main_category_id = mc.id 
+          LEFT JOIN printers p ON fi.printer_id = p.id
           WHERE 1=1";
 
 $params = [];
@@ -211,6 +212,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
                         <th>Item Details</th>
                         <th>Category</th>
                         <th>Price</th>
+                        <th>Prints To</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -263,6 +265,17 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
                                         <?php echo format_currency($item['price']); ?>
                                     <?php endif; ?>
                                 </div>
+                            </td>
+                            <td>
+                                <?php if (!empty($item['printer_name'])): ?>
+                                    <span
+                                        style="background: rgba(249, 115, 22, 0.1); color: #c2410c; padding: 0.3rem 0.7rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                        <i class="fas fa-print" style="font-size: 0.7rem;"></i>
+                                        <?php echo htmlspecialchars($item['printer_name']); ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span style="color: var(--text-muted); font-size: 0.8rem;">Default routing</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span

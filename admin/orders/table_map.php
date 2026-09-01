@@ -154,6 +154,42 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 ?>
 
 <style>
+    /* Map table map styles to global admin theme variables */
+    :root {
+        --table-bg: var(--light-bg, #f3f4f6);
+        --table-border: var(--border-color, #e2e8f0);
+        --table-border-strong: #fed7aa;
+        --table-text-main: var(--text-main, #111827);
+        --table-text-muted: var(--text-muted, #64748b);
+        --table-primary: var(--primary-color, #2563eb);
+        --table-accent: var(--primary-color, #2563eb);
+        --table-success: var(--success-color, #16a34a);
+        --table-danger: var(--danger-color, #dc2626);
+        --table-warning: #92400e;
+        --table-card-bg: var(--white, #ffffff);
+        --table-card-alt: var(--glass, #f0f7fb);
+        --table-preview-bg: rgba(255,247,237,0.92);
+        --table-preview-border: rgba(255,237,213,0.7);
+    }
+
+    html[data-theme="dark"] {
+        --table-bg: var(--light-bg);
+        --table-border: var(--border-color);
+        --table-card-bg: var(--white);
+        --table-card-alt: rgba(255,255,255,0.02);
+        --table-text-main: var(--text-main);
+        --table-text-muted: var(--text-muted);
+        --table-preview-bg: rgba(26,28,35,0.6);
+        --table-preview-border: rgba(255,255,255,0.06);
+        --table-warning: #f59e0b;
+        --status-available-bg: rgba(34,197,94,0.08);
+        --status-available-color: rgba(34,197,94,0.9);
+        --status-occupied-bg: rgba(245,158,11,0.06);
+        --status-occupied-color: var(--table-border-strong);
+        --status-reserved-bg: rgba(99,102,241,0.04);
+        --status-reserved-color: var(--table-primary);
+    }
+
     .table-map-header {
         display: flex;
         justify-content: space-between;
@@ -172,13 +208,13 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     .table-card {
         border-radius: 16px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--table-border);
         padding: 1.2rem;
         min-height: 260px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        background: #fff;
+        background: var(--table-card-bg);
         box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
         position: relative;
         transition: all 0.2s ease;
@@ -190,18 +226,18 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .table-card.available {
-        background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
-        border-color: #bbf7d0;
+        background: linear-gradient(180deg, rgba(240,253,244,0.9) 0%, var(--table-card-bg) 100%);
+        border-color: rgba(187,247,208,0.6);
     }
 
     .table-card.occupied {
-        background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
-        border-color: #fed7aa;
+        background: linear-gradient(180deg, rgba(255,247,237,0.95) 0%, var(--table-card-bg) 100%);
+        border-color: var(--table-border-strong);
     }
 
     .table-card.reserved {
-        background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
-        border-color: #bfdbfe;
+        background: linear-gradient(180deg, rgba(239,246,255,0.95) 0%, var(--table-card-bg) 100%);
+        border-color: rgba(191,219,254,0.6);
     }
 
     .table-top {
@@ -214,7 +250,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .table-name {
         font-size: 1.5rem;
         font-weight: 900;
-        color: #111827;
+        color: var(--table-text-main);
     }
 
     .status-pill {
@@ -226,9 +262,9 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         text-transform: uppercase;
     }
 
-    .status-pill.available { background: #dcfce7; color: #166534; }
-    .status-pill.occupied { background: #fff7ed; color: #9a4d00; }
-    .status-pill.reserved { background: #dbeafe; color: #1d4ed8; }
+    .status-pill.available { background: var(--status-available-bg, rgba(16,185,129,0.07)); color: var(--status-available-color, var(--table-success)); }
+    .status-pill.occupied { background: var(--status-occupied-bg, rgba(249,231,159,0.08)); color: var(--status-occupied-color, var(--table-border-strong)); }
+    .status-pill.reserved { background: var(--status-reserved-bg, rgba(203,213,254,0.08)); color: var(--status-reserved-color, var(--table-primary)); }
 
     .seat-tags-wrap {
         display: flex;
@@ -240,11 +276,11 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .seat-tag {
         font-size: 0.72rem;
         font-weight: 700;
-        background: #f1f5f9;
-        color: #475569;
+        background: var(--table-card-alt);
+        color: var(--table-text-muted);
         padding: 0.2rem 0.5rem;
         border-radius: 4px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--table-border);
     }
 
     .table-actions-grid {
@@ -268,17 +304,34 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         transition: all 0.15s ease;
     }
 
-    .action-btn.edit { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
-    .action-btn.edit:hover { background: #e2e8f0; }
+    .action-btn.edit { background: var(--table-card-alt); color: var(--table-text-main); border: 1px solid var(--table-border); }
+    .action-btn.edit:hover { background: var(--table-card-bg); }
 
-    .action-btn.seats { background: #0f172a; color: white; }
-    .action-btn.seats:hover { background: #1e293b; }
+    .action-btn.seats { background: var(--table-primary); color: var(--table-card-bg); }
+    .action-btn.seats:hover { filter: brightness(0.95); }
 
-    .action-btn.qr { background: #2563eb; color: white; }
-    .action-btn.qr:hover { background: #1d4ed8; }
+    .action-btn.qr { background: var(--table-primary); color: var(--table-card-bg); }
+    .action-btn.qr:hover { filter: brightness(0.95); }
 
-    .action-btn.delete { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-    .action-btn.delete:hover { background: #fca5a5; }
+    .action-btn.delete { background: rgba(254,226,226,0.95); color: var(--table-danger); border: 1px solid rgba(252,165,165,0.9); }
+    .action-btn.delete:hover { background: rgba(252,165,165,0.9); }
+
+    /* Helpers for inline-replaced elements */
+    .unassigned-column { background: var(--table-card-bg); border: 1px solid var(--table-border); border-radius: 12px; padding: 0.9rem; min-height: 140px; }
+    .draggable-order { padding: 0.65rem; border: 1px solid var(--table-border); border-radius: 8px; background: var(--table-card-bg); cursor: grab; display:flex; justify-content:space-between; align-items:center; }
+    .drag-note { font-size:0.8rem; color: var(--table-primary); font-weight:700; }
+    .table-info { margin: 0.6rem 0; font-size: 0.85rem; color: var(--table-text-muted); }
+    .live-order-text { color: var(--table-border-strong); font-weight:700; }
+    .table-preview-wrap { margin:0.75rem 0; border:1px solid var(--table-border-strong); border-radius:10px; overflow:hidden; background: var(--table-card-bg); }
+    .table-preview-header { display:flex; justify-content:space-between; gap:0.5rem; padding:0.55rem 0.65rem; background: var(--table-preview-bg); color: var(--table-border-strong); font-size:0.76rem; font-weight:800; }
+    .table-preview-item { padding:0.65rem; border-top:1px solid var(--table-preview-border); font-size:0.78rem; color: var(--table-text-main); }
+    .table-preview-item .category { margin-top:0.25rem; color: var(--table-border-strong); font-size:0.7rem; font-weight:700; }
+    .special-requests { margin-top:0.35rem; padding:0.35rem 0.45rem; border-radius:5px; background: rgba(255,243,205,0.95); color: var(--table-warning); font-size:0.72rem; }
+    .take-order-link { font-weight:700; color: var(--table-primary); text-decoration:none; font-size:0.85rem; }
+    .mark-clean-btn { background:none; border:none; color: var(--table-success); font-weight:700; font-size:0.8rem; cursor:pointer; }
+    .modal-card h3 i { color: var(--table-primary); }
+    .danger-btn { background: rgba(254,226,226,0.9); color: var(--table-danger); border:none; border-radius:6px; padding:0.5rem; cursor:pointer; }
+    .muted-note { color: var(--table-text-muted); font-size:0.85rem; }
 
     /* Modals */
     .modal-overlay {
@@ -295,7 +348,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .modal-overlay.show { display: flex; }
 
     .modal-card {
-        background: #ffffff;
+        background: var(--table-card-bg);
         border-radius: 16px;
         width: 480px;
         max-width: 92%;
@@ -308,16 +361,18 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .modal-card h3 {
         margin: 0 0 1rem;
         font-size: 1.15rem;
-        color: #0f172a;
+        color: var(--table-text-main);
     }
 
     .modal-input {
         width: 100%;
         padding: 0.65rem 0.85rem;
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--table-border);
         border-radius: 8px;
         font-size: 0.9rem;
         margin-bottom: 0.75rem;
+        background: var(--table-card-bg);
+        color: var(--table-text-main);
     }
 
     .alert {
@@ -326,8 +381,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         margin-bottom: 1rem;
         font-weight: 600;
     }
-    .alert.success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .alert.error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .alert.success { background: rgba(16,185,129,0.08); color: var(--table-success); border: 1px solid rgba(187,247,208,0.5); }
+    .alert.error { background: rgba(254,226,226,0.9); color: var(--table-danger); border: 1px solid rgba(252,165,165,0.9); }
 </style>
 
 <div class="table-map-header">
@@ -336,10 +391,10 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         <p style="margin:0.4rem 0 0; color:var(--text-muted);">Manage restaurant tables, seats, live statuses, and generate QR code ordering scanners.</p>
     </div>
     <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
-        <button type="button" class="btn-submit" onclick="openAddTableModal()" style="width:auto; display:inline-flex; align-items:center; gap:0.4rem; background:#2563eb;">
+        <button type="button" class="btn-submit" onclick="openAddTableModal()" style="width:auto; display:inline-flex; align-items:center; gap:0.4rem; background:var(--table-primary); color:var(--table-card-bg);">
             <i class="fas fa-plus"></i> Add New Table
         </button>
-        <a href="cleaning_log.php" class="btn-submit" style="width:auto; text-decoration:none; display:inline-flex; align-items:center; gap:0.4rem; background:#64748b;">
+        <a href="cleaning_log.php" class="btn-submit" style="width:auto; text-decoration:none; display:inline-flex; align-items:center; gap:0.4rem; background:var(--table-text-muted); color:var(--table-card-bg);">
             <i class="fas fa-broom"></i> Cleaning Log
         </a>
         <a href="take_order.php" class="btn-submit" style="width:auto; text-decoration:none; display:inline-flex; align-items:center; gap:0.4rem;">
@@ -354,17 +409,17 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     <!-- Unassigned Dine-in Orders Sidebar -->
     <div style="flex: 1 1 260px; min-width:260px;">
         <h3 style="margin:0 0 0.75rem; font-size:1.05rem;">Unassigned Dine-In Orders</h3>
-        <div id="unassignedColumn" style="background:#fff; border:1px solid #edf2f7; border-radius:12px; padding:0.9rem; min-height:140px;">
+        <div id="unassignedColumn" class="unassigned-column">
             <?php
             $unassigned = $conn->query("SELECT id, order_reference, total, created_at FROM orders WHERE order_type='dine_in' AND (table_number IS NULL OR table_number = '') AND status IN ('Placed','Preparing') ORDER BY created_at ASC")->fetchAll();
-            if (empty($unassigned)) {
-                echo '<div style="color:#64748b; font-size:0.85rem;">No unassigned dine-in orders.</div>';
+                if (empty($unassigned)) {
+                echo '<div class="muted-note">No unassigned dine-in orders.</div>';
             } else {
                 echo '<ul style="list-style:none; margin:0; padding:0; display:grid; gap:0.5rem;">';
-                foreach ($unassigned as $u) {
-                    echo '<li draggable="true" class="draggable-order" data-order-id="' . (int)$u['id'] . '" style="padding:0.65rem; border:1px solid #e6edf3; border-radius:8px; background:#fff; cursor:grab; display:flex; justify-content:space-between; align-items:center;">';
-                    echo '<div><strong>' . htmlspecialchars($u['order_reference']) . '</strong><div style="font-size:0.85rem; color:#64748b;">' . format_currency($u['total']) . '</div></div>';
-                    echo '<div style="font-size:0.8rem; color:#2563eb; font-weight:700;">Drag to Table</div>';
+                    foreach ($unassigned as $u) {
+                    echo '<li draggable="true" class="draggable-order" data-order-id="' . (int)$u['id'] . '">';
+                    echo '<div><strong>' . htmlspecialchars($u['order_reference']) . '</strong><div class="muted-note">' . format_currency($u['total']) . '</div></div>';
+                    echo '<div class="drag-note">Drag to Table</div>';
                     echo '</li>';
                 }
                 echo '</ul>';
@@ -401,21 +456,21 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
                         </div>
 
                         <!-- Live Order or Table Info -->
-                        <div style="margin: 0.6rem 0; font-size: 0.85rem; color: #475569;">
+                        <div class="table-info">
                             <?php if ($is_live_occupied): ?>
-                                <div style="color: #9a4d00; font-weight: 700;">
+                                <div class="live-order-text">
                                     <i class="fas fa-utensils"></i> Live Order: <?php echo htmlspecialchars($live_order['order_reference']); ?>
                                 </div>
                                 <div>Status: <strong><?php echo htmlspecialchars($live_order['status'] ?: 'Placed'); ?></strong></div>
                             <?php else: ?>
                                 <div><strong>Available Seats:</strong> <?php echo $seat_count; ?></div>
-                                <div style="font-size:0.8rem; color:#64748b; margin-top:0.2rem;"><?php echo !empty($notes) ? htmlspecialchars($notes) : 'Ready for seating'; ?></div>
+                                <div class="muted-note"><?php echo !empty($notes) ? htmlspecialchars($notes) : 'Ready for seating'; ?></div>
                             <?php endif; ?>
                         </div>
 
                         <!-- Current Order Preview -->
-                        <div style="margin:0.75rem 0; border:1px solid #fed7aa; border-radius:10px; overflow:hidden; background:#fff;">
-                            <div style="display:flex; justify-content:space-between; gap:0.5rem; padding:0.55rem 0.65rem; background:#fff7ed; color:#9a4d00; font-size:0.76rem; font-weight:800;">
+                        <div class="table-preview-wrap">
+                            <div class="table-preview-header">
                                 <span><i class="fas fa-clipboard-list"></i> Table Preview</span>
                                 <?php if ($is_live_occupied): ?><span><?php echo count($table_preview_items); ?> item<?php echo count($table_preview_items) === 1 ? '' : 's'; ?></span><?php endif; ?>
                             </div>
@@ -429,17 +484,17 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
                                     if (!empty($preview_item['recipient_name'])) $details[] = 'For: ' . $preview_item['recipient_name'];
                                     $line_total = ((float) $preview_item['price'] * (int) $preview_item['quantity']) + (float) ($preview_item['request_price'] ?? 0);
                                     ?>
-                                    <div style="padding:0.65rem; border-top:1px solid #ffedd5; font-size:0.78rem; color:#334155;">
+                                    <div class="table-preview-item">
                                         <div style="display:flex; justify-content:space-between; gap:0.5rem;"><strong><?php echo (int) $preview_item['quantity']; ?> x <?php echo htmlspecialchars($preview_item['item_name']); ?></strong><span style="white-space:nowrap; font-weight:700;"><?php echo format_currency($line_total); ?></span></div>
-                                        <div style="margin-top:0.25rem; color:#9a4d00; font-size:0.7rem; font-weight:700;"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($category); ?></div>
-                                        <?php if (!empty($details)): ?><div style="margin-top:0.3rem; color:#64748b; font-size:0.72rem; line-height:1.35;"><?php echo htmlspecialchars(implode(' / ', $details)); ?></div><?php endif; ?>
-                                        <?php if (!empty($preview_item['special_requests'])): ?><div style="margin-top:0.35rem; padding:0.35rem 0.45rem; border-radius:5px; background:#fff3cd; color:#92400e; font-size:0.72rem;"><i class="fas fa-comment-dots"></i> <?php echo htmlspecialchars($preview_item['special_requests']); ?></div><?php endif; ?>
+                                        <div class="category"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($category); ?></div>
+                                        <?php if (!empty($details)): ?><div class="muted-note" style="margin-top:0.3rem; line-height:1.35;"><?php echo htmlspecialchars(implode(' / ', $details)); ?></div><?php endif; ?>
+                                        <?php if (!empty($preview_item['special_requests'])): ?><div class="special-requests"><i class="fas fa-comment-dots"></i> <?php echo htmlspecialchars($preview_item['special_requests']); ?></div><?php endif; ?>
                                     </div>
                                 <?php endforeach; ?>
                             <?php elseif ($is_live_occupied): ?>
-                                <div style="padding:0.65rem; color:#64748b; font-size:0.75rem;">This live order does not contain any items yet.</div>
+                                <div class="muted-note" style="padding:0.65rem;">This live order does not contain any items yet.</div>
                             <?php else: ?>
-                                <div style="padding:0.65rem; color:#64748b; font-size:0.75rem;"><i class="fas fa-info-circle"></i> No active order. Items, categories, and requests will appear here.</div>
+                                <div class="muted-note" style="padding:0.65rem;"><i class="fas fa-info-circle"></i> No active order. Items, categories, and requests will appear here.</div>
                             <?php endif; ?>
                         </div>
 
@@ -473,11 +528,11 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
                         </div>
 
                         <div style="margin-top:0.6rem; display:flex; justify-content:space-between; align-items:center;">
-                            <a href="take_order.php?table_number=<?php echo urlencode($table_name); ?>&order_type=dine_in" style="font-weight:700; color:#d97706; text-decoration:none; font-size:0.85rem;">
+                            <a href="take_order.php?table_number=<?php echo urlencode($table_name); ?>&order_type=dine_in" class="take-order-link">
                                 <?php echo $is_live_occupied ? 'Update Order' : 'Take Order'; ?> <i class="fas fa-arrow-right"></i>
                             </a>
                             <?php if ($is_live_occupied): ?>
-                                <button type="button" onclick="markTableClean('<?php echo htmlspecialchars(addslashes($table_name)); ?>')" style="background:none; border:none; color:#16a34a; font-weight:700; font-size:0.8rem; cursor:pointer;">
+                                <button type="button" onclick="markTableClean('<?php echo htmlspecialchars(addslashes($table_name)); ?>')" class="mark-clean-btn">
                                     Mark Clean
                                 </button>
                             <?php endif; ?>
@@ -492,7 +547,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 <!-- Modal 1: Add New Table -->
 <div class="modal-overlay" id="addTableModal">
     <div class="modal-card">
-        <h3><i class="fas fa-plus-circle" style="color:#2563eb;"></i> Add New Restaurant Table</h3>
+        <h3><i class="fas fa-plus-circle"></i> Add New Restaurant Table</h3>
         <form method="POST">
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
             <input type="hidden" name="action" value="create_table">
@@ -514,8 +569,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
             <input type="text" name="notes" class="modal-input" placeholder="e.g. Patio section, window view">
 
             <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
-                <button type="button" class="btn-submit" onclick="closeModal('addTableModal')" style="background:#64748b;">Cancel</button>
-                <button type="submit" class="btn-submit" style="background:#2563eb;">Create Table</button>
+                <button type="button" class="btn-submit" onclick="closeModal('addTableModal')" style="background:var(--table-text-muted); color:var(--table-card-bg);">Cancel</button>
+                <button type="submit" class="btn-submit" style="background:var(--table-primary); color:var(--table-card-bg);">Create Table</button>
             </div>
         </form>
     </div>
@@ -524,7 +579,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 <!-- Modal 2: Edit Table -->
 <div class="modal-overlay" id="editTableModal">
     <div class="modal-card">
-        <h3><i class="fas fa-edit" style="color:#0f172a;"></i> Edit Table Details</h3>
+        <h3><i class="fas fa-edit"></i> Edit Table Details</h3>
         <form method="POST">
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
             <input type="hidden" name="action" value="edit_table">
@@ -547,7 +602,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
             <input type="text" name="notes" id="editNotes" class="modal-input">
 
             <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
-                <button type="button" class="btn-submit" onclick="closeModal('editTableModal')" style="background:#64748b;">Cancel</button>
+                <button type="button" class="btn-submit" onclick="closeModal('editTableModal')" style="background:var(--table-text-muted); color:var(--table-card-bg);">Cancel</button>
                 <button type="submit" class="btn-submit">Save Changes</button>
             </div>
         </form>
@@ -557,24 +612,24 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 <!-- Modal 3: Manage Seats for Table -->
 <div class="modal-overlay" id="manageSeatsModal">
     <div class="modal-card">
-        <h3><i class="fas fa-chair" style="color:#0f172a;"></i> Manage Seats - <span id="seatsModalTableName">Table A1</span></h3>
+        <h3><i class="fas fa-chair"></i> Manage Seats - <span id="seatsModalTableName">Table A1</span></h3>
         <form method="POST" id="seatsForm">
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
             <input type="hidden" name="action" value="update_seats">
             <input type="hidden" name="table_id" id="seatsModalTableId">
 
-            <p style="font-size:0.85rem; color:#64748b; margin-top:0;">Customize each available seat name for guests ordering at this table.</p>
+            <p class="muted-note" style="font-size:0.85rem; margin-top:0;">Customize each available seat name for guests ordering at this table.</p>
 
             <div id="seatsInputsContainer" style="display:grid; gap:0.5rem; max-height:280px; overflow-y:auto; margin-bottom:1rem;">
                 <!-- Seat Inputs Loaded Dynamically -->
             </div>
 
-            <button type="button" class="btn-submit" onclick="addNewSeatInput()" style="background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1; width:100%; margin-bottom:1rem;">
+            <button type="button" class="btn-submit" onclick="addNewSeatInput()" style="background:var(--table-card-alt); color:var(--table-text-main); border:1px solid var(--table-border); width:100%; margin-bottom:1rem;">
                 <i class="fas fa-plus"></i> Add Another Seat
             </button>
 
             <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
-                <button type="button" class="btn-submit" onclick="closeModal('manageSeatsModal')" style="background:#64748b;">Cancel</button>
+                <button type="button" class="btn-submit" onclick="closeModal('manageSeatsModal')" style="background:var(--table-text-muted); color:var(--table-card-bg);">Cancel</button>
                 <button type="submit" class="btn-submit">Save Seats</button>
             </div>
         </form>
@@ -584,13 +639,13 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 <!-- Modal 4: View / Print QR Code -->
 <div class="modal-overlay" id="qrCodeModal">
     <div class="modal-card" style="text-align:center;">
-        <h3><i class="fas fa-qrcode" style="color:#2563eb;"></i> Table QR Scanner - <span id="qrModalTableName">A1</span></h3>
+        <h3><i class="fas fa-qrcode"></i> Table QR Scanner - <span id="qrModalTableName">A1</span></h3>
 
-        <div id="printableQrArea" style="background:#ffffff; padding:1.5rem; border:2px solid #e2e8f0; border-radius:12px; display:inline-block; margin-bottom:1rem;">
-            <div style="font-weight:900; font-size:1.4rem; color:#0f172a; margin-bottom:0.4rem;">SCAN TO ORDER</div>
-            <div style="font-size:0.85rem; color:#64748b; margin-bottom:1rem;">Airport West Hotel • Table <span id="qrCardTableTitle">A1</span></div>
+        <div id="printableQrArea" style="background:var(--table-card-bg); padding:1.5rem; border:2px solid var(--table-border); border-radius:12px; display:inline-block; margin-bottom:1rem;">
+            <div style="font-weight:900; font-size:1.4rem; color:var(--table-text-main); margin-bottom:0.4rem;">SCAN TO ORDER</div>
+            <div style="font-size:0.85rem; color:var(--table-text-muted); margin-bottom:1rem;">Airport West Hotel • Table <span id="qrCardTableTitle">A1</span></div>
             <img id="qrCodeImg" src="" alt="Table QR Code" style="width:200px; height:200px; border-radius:8px;">
-            <div style="font-size:0.75rem; color:#94a3b8; margin-top:0.8rem;">Point phone camera to view menu & order from your seat</div>
+            <div style="font-size:0.75rem; color:var(--table-text-muted); margin-top:0.8rem;">Point phone camera to view menu & order from your seat</div>
         </div>
 
         <div>
@@ -598,9 +653,9 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         </div>
 
         <div style="display:flex; justify-content:center; gap:0.5rem; margin-top:0.5rem;">
-            <button type="button" class="btn-submit" onclick="copyQrLink()" style="background:#64748b;"><i class="fas fa-copy"></i> Copy Link</button>
-            <button type="button" class="btn-submit" onclick="printQrCard()" style="background:#2563eb;"><i class="fas fa-print"></i> Print Table Card</button>
-            <button type="button" class="btn-submit" onclick="closeModal('qrCodeModal')" style="background:#0f172a;">Close</button>
+            <button type="button" class="btn-submit" onclick="copyQrLink()" style="background:var(--table-text-muted); color:var(--table-card-bg);"><i class="fas fa-copy"></i> Copy Link</button>
+            <button type="button" class="btn-submit" onclick="printQrCard()" style="background:var(--table-primary); color:var(--table-card-bg);"><i class="fas fa-print"></i> Print Table Card</button>
+            <button type="button" class="btn-submit" onclick="closeModal('qrCodeModal')" style="background:var(--table-primary); color:var(--table-card-bg);">Close</button>
         </div>
     </div>
 </div>
@@ -608,7 +663,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 <!-- Modal 5: Delete Table Confirmation -->
 <div class="modal-overlay" id="deleteTableModal">
     <div class="modal-card">
-        <h3 style="color:#dc2626;"><i class="fas fa-exclamation-triangle"></i> Delete Table Confirmation</h3>
+        <h3 style="color:var(--table-danger);"><i class="fas fa-exclamation-triangle"></i> Delete Table Confirmation</h3>
         <p>Are you sure you want to delete <strong id="deleteTableName">Table A1</strong>? All associated seat configurations will also be permanently deleted.</p>
         
         <form method="POST">
@@ -617,8 +672,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
             <input type="hidden" name="table_id" id="deleteTableId">
 
             <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem;">
-                <button type="button" class="btn-submit" onclick="closeModal('deleteTableModal')" style="background:#64748b;">Cancel</button>
-                <button type="submit" class="btn-submit" style="background:#dc2626;">Delete Table</button>
+                <button type="button" class="btn-submit" onclick="closeModal('deleteTableModal')" style="background:var(--table-text-muted); color:var(--table-card-bg);">Cancel</button>
+                <button type="submit" class="btn-submit" style="background:var(--table-danger); color:var(--table-card-bg);">Delete Table</button>
             </div>
         </form>
     </div>
@@ -650,7 +705,7 @@ function openSeatsModal(tableId, tableName) {
     document.getElementById('seatsModalTableId').value = tableId;
     document.getElementById('seatsModalTableName').textContent = 'Table ' + tableName;
     const container = document.getElementById('seatsInputsContainer');
-    container.innerHTML = '<div style="color:#64748b; font-size:0.85rem;">Loading seats...</div>';
+    container.innerHTML = '<div class="muted-note">Loading seats...</div>';
 
     fetch('table_api.php', {
         method: 'POST',
@@ -664,7 +719,7 @@ function openSeatsModal(tableId, tableName) {
                 <div style="display:flex; gap:0.4rem; align-items:center;">
                     <span style="font-weight:700; font-size:0.85rem; width:65px;">Seat ${idx + 1}:</span>
                     <input type="text" name="seat_names[]" value="${escapeHtml(s.seat_name)}" class="modal-input" style="margin-bottom:0;" placeholder="e.g. Window Seat, Seat 1">
-                    <button type="button" onclick="this.parentElement.remove()" style="background:#fee2e2; color:#dc2626; border:none; border-radius:6px; padding:0.5rem; cursor:pointer;">
+                    <button type="button" onclick="this.parentElement.remove()" class="danger-btn">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -698,7 +753,7 @@ function addNewSeatInput() {
     div.innerHTML = `
         <span style="font-weight:700; font-size:0.85rem; width:65px;">Seat ${idx}:</span>
         <input type="text" name="seat_names[]" value="Seat ${idx}" class="modal-input" style="margin-bottom:0;" placeholder="Seat Name">
-        <button type="button" onclick="this.parentElement.remove()" style="background:#fee2e2; color:#dc2626; border:none; border-radius:6px; padding:0.5rem; cursor:pointer;">
+        <button type="button" onclick="this.parentElement.remove()" class="danger-btn">
             <i class="fas fa-trash"></i>
         </button>
     `;
@@ -724,6 +779,13 @@ function copyQrLink() {
 
 function printQrCard() {
     const area = document.getElementById('printableQrArea').innerHTML;
+    // compute current border color from the live element so printed card matches theme
+    let borderColor = '#0f172a';
+    const el = document.getElementById('printCardContainer');
+    if (el) {
+        const cs = getComputedStyle(el);
+        if (cs && cs.borderColor) borderColor = cs.borderColor;
+    }
     const win = window.open('', '_blank', 'width=600,height=600');
     win.document.write(`
         <html>
@@ -734,7 +796,7 @@ function printQrCard() {
             </style>
         </head>
         <body>
-            <div style="border: 3px solid #0f172a; padding: 2rem; border-radius: 16px; width: 300px;">
+            <div style="border: 3px solid ${borderColor}; padding: 2rem; border-radius: 16px; width: 300px;">
                 ${area}
             </div>
             <script>window.onload = function() { window.print(); window.close(); }<\/script>

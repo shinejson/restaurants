@@ -175,15 +175,30 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 ?>
 
 <style>
+    /* Map local Guest Table Order colors to global admin theme variables */
     :root {
-        --gto-bg: #f3f4f6;
-        --gto-border: #e5e7eb;
+        --gto-bg: var(--light-bg, #f3f4f6);
+        --gto-border: var(--border-color, #e5e7eb);
         --gto-border-dark: #d1d5db;
-        --gto-text-main: #1f2937;
-        --gto-text-muted: #6b7280;
-        --gto-primary: #0f172a;
-        --gto-accent: #f97316;
-        --gto-card-bg: #ffffff;
+        --gto-text-main: var(--text-main, #1f2937);
+        --gto-text-muted: var(--text-muted, #6b7280);
+        --gto-primary: var(--dark-color, #0f172a);
+        --gto-accent: var(--primary-color, #f97316);
+        --gto-card-bg: var(--white, #ffffff);
+        --gto-card-alt: var(--glass, #f8fafc);
+        --gto-row-hover: rgba(0,0,0,0.02);
+    }
+
+    html[data-theme="dark"] {
+        --gto-bg: var(--light-bg);
+        --gto-border: var(--border-color);
+        --gto-border-dark: #2d3748;
+        --gto-text-main: var(--text-main);
+        --gto-text-muted: var(--text-muted);
+        --gto-primary: var(--dark-color);
+        --gto-card-bg: var(--white);
+        --gto-card-alt: rgba(255,255,255,0.02);
+        --gto-row-hover: rgba(255,255,255,0.02);
     }
 
     body {
@@ -194,7 +209,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: #ffffff;
+        background: var(--gto-card-bg);
         border: 1px solid var(--gto-border);
         border-radius: 8px;
         padding: 0.6rem 1rem;
@@ -222,11 +237,11 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         gap: 0.4rem;
         font-size: 0.8rem;
         font-weight: 600;
-        color: #16a34a;
-        background: #f0fdf4;
+        color: var(--success-color, #16a34a);
+        background: rgba(16,185,129,0.07);
         padding: 0.25rem 0.6rem;
         border-radius: 9999px;
-        border: 1px solid #bbf7d0;
+        border: 1px solid rgba(16,185,129,0.12);
     }
 
     .gto-header-actions {
@@ -237,14 +252,14 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .gto-header-link {
-        color: #0f172a;
+        color: var(--gto-primary);
         font-weight: 700;
         font-size: 0.82rem;
         text-decoration: none;
         border: 1px solid var(--gto-border-dark);
         padding: 0.35rem 0.75rem;
         border-radius: 6px;
-        background: #ffffff;
+        background: var(--gto-card-bg);
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
@@ -289,7 +304,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .gto-input-group i {
         position: absolute;
         left: 0.85rem;
-        color: #94a3b8;
+        color: var(--gto-text-muted);
         font-size: 0.95rem;
         pointer-events: none;
     }
@@ -300,7 +315,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         border: 1px solid var(--gto-border-dark);
         border-radius: 6px;
         font-size: 0.9rem;
-        background: #ffffff;
+        background: var(--gto-card-bg);
         color: var(--gto-text-main);
         outline: none;
         transition: border-color 0.15s ease;
@@ -312,7 +327,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .gto-cat-section {
-        background: #ffffff;
+        background: var(--gto-card-bg);
         border: 1px solid var(--gto-border);
         border-radius: 8px;
         padding: 0.5rem 0.75rem;
@@ -336,13 +351,13 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .gto-pill {
-        background: #ffffff;
+        background: var(--gto-card-bg);
         border: 1px solid var(--gto-border-dark);
         border-radius: 6px;
         padding: 0.35rem 0.85rem;
         font-size: 0.82rem;
         font-weight: 600;
-        color: #475569;
+        color: var(--gto-text-muted);
         cursor: pointer;
         user-select: none;
         transition: all 0.15s ease;
@@ -351,18 +366,18 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .gto-pill:hover {
-        border-color: #0f172a;
-        color: #0f172a;
+        border-color: var(--gto-primary);
+        color: var(--gto-primary);
     }
 
     .gto-pill.active {
-        background: #0f172a;
-        color: #ffffff;
-        border-color: #0f172a;
+        background: var(--gto-primary);
+        color: var(--gto-card-bg);
+        border-color: var(--gto-primary);
     }
 
     .gto-grid-container {
-        background: #ffffff;
+        background: var(--gto-card-bg);
         border: 1px solid var(--gto-border);
         border-radius: 8px;
         padding: 0.75rem;
@@ -378,7 +393,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .gto-card {
-        background: #f8fafc;
+        background: var(--gto-card-alt);
         border: 1px solid var(--gto-border);
         border-radius: 8px;
         padding: 0.6rem;
@@ -389,7 +404,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     .gto-card.selected {
         border: 2px solid var(--gto-accent);
-        background: #fff7ed;
+        background: rgba(255, 247, 237, 0.9);
     }
 
     .gto-card-img-wrap {
@@ -397,10 +412,10 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #ffffff;
+        background: var(--gto-card-bg);
         border-radius: 6px;
         overflow: hidden;
-        border: 1px solid #f1f5f9;
+        border: 1px solid var(--gto-border);
         margin-bottom: 0.45rem;
     }
 
@@ -412,13 +427,13 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     .gto-card-icon {
         font-size: 1.8rem;
-        color: #94a3b8;
+        color: var(--gto-text-muted);
     }
 
     .gto-card-title {
         font-size: 0.8rem;
         font-weight: 700;
-        color: #1e293b;
+        color: var(--gto-text-main);
         text-align: center;
         line-height: 1.25;
         display: -webkit-box;
@@ -450,18 +465,18 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         height: 30px;
         border-radius: 6px;
         border: 1px solid var(--gto-border-dark);
-        background: #ffffff;
+        background: var(--gto-card-bg);
         font-weight: 800;
         font-size: 1rem;
         cursor: pointer;
-        color: #0f172a;
+        color: var(--gto-primary);
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
     .gto-qty-btn:hover {
-        background: #e2e8f0;
+        background: var(--gto-row-hover);
     }
 
     .gto-qty-val {
@@ -473,7 +488,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     /* Right: order panel */
     .gto-order-panel {
-        background: #ffffff;
+        background: var(--gto-card-bg);
         border: 1px solid var(--gto-border);
         border-radius: 8px;
         display: flex;
@@ -515,7 +530,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .gto-order-details {
         padding: 0.75rem 1rem;
         border-bottom: 1px solid var(--gto-border);
-        background: #fafafa;
+        background: var(--gto-card-alt);
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 0.5rem;
@@ -534,7 +549,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .gto-field label {
         font-size: 0.7rem;
         font-weight: 700;
-        color: #64748b;
+        color: var(--gto-text-muted);
         text-transform: uppercase;
         letter-spacing: 0.03em;
     }
@@ -546,7 +561,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         border: 1px solid var(--gto-border-dark);
         border-radius: 6px;
         font-size: 0.85rem;
-        background: #ffffff;
+        background: var(--gto-card-bg);
         outline: none;
     }
 
@@ -558,14 +573,14 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .gto-qr-hint {
         grid-column: 1 / -1;
         font-size: 0.72rem;
-        color: #64748b;
+        color: var(--gto-text-muted);
         display: flex;
         align-items: center;
         gap: 0.35rem;
     }
 
     .gto-qr-hint a {
-        color: #2563eb;
+        color: var(--gto-accent);
         font-weight: 700;
         text-decoration: none;
     }
@@ -586,7 +601,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         align-items: center;
         justify-content: center;
         flex: 1;
-        color: #94a3b8;
+        color: var(--gto-text-muted);
         text-align: center;
         padding: 1.5rem;
     }
@@ -605,7 +620,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .gto-cart-item {
-        background: #ffffff;
+        background: var(--gto-card-bg);
         border: 1px solid var(--gto-border);
         border-radius: 6px;
         padding: 0.5rem 0.6rem;
@@ -618,20 +633,20 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .gto-cart-item-name {
         font-size: 0.82rem;
         font-weight: 700;
-        color: #1e293b;
+        color: var(--gto-text-main);
         flex: 1;
     }
 
     .gto-cart-item-meta {
         font-size: 0.72rem;
-        color: #64748b;
+        color: var(--gto-text-muted);
         font-weight: 600;
     }
 
     .gto-cart-item-price {
         font-size: 0.82rem;
         font-weight: 800;
-        color: #0f172a;
+        color: var(--gto-primary);
         min-width: 65px;
         text-align: right;
     }
@@ -648,7 +663,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .gto-summary {
         border-top: 1px solid var(--gto-border);
         padding: 0.75rem 1rem;
-        background: #ffffff;
+        background: var(--gto-card-bg);
         display: flex;
         flex-direction: column;
         gap: 0.35rem;
@@ -658,13 +673,13 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: flex;
         justify-content: space-between;
         font-size: 0.82rem;
-        color: #475569;
+        color: var(--gto-text-muted);
     }
 
     .gto-summary-row.total {
         font-size: 1.05rem;
         font-weight: 800;
-        color: #0f172a;
+        color: var(--gto-primary);
         margin-top: 0.3rem;
         padding-top: 0.4rem;
         border-top: 1px solid var(--gto-border);
@@ -673,7 +688,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .gto-submit-btn {
         width: 100%;
         background: var(--gto-accent);
-        color: #ffffff;
+        color: var(--gto-card-bg);
         border: none;
         border-radius: 6px;
         padding: 0.85rem 1rem;
@@ -689,12 +704,13 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .gto-submit-btn:hover {
-        background: #ea580c;
+        background: var(--gto-accent);
+        opacity: 0.95;
     }
 
     /* Success card */
     .gto-success-card {
-        background: #ffffff;
+        background: var(--gto-card-bg);
         border: 1px solid var(--gto-border);
         border-radius: 8px;
         padding: 2rem 1.5rem;
@@ -704,7 +720,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .gto-success-card .receipt {
-        background: #f8fafc;
+        background: var(--gto-card-alt);
         border: 1px solid var(--gto-border);
         border-radius: 10px;
         padding: 1rem;
@@ -715,7 +731,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .gto-success-card .receipt p {
         margin: 0 0 0.4rem;
         font-size: 0.88rem;
-        color: #334155;
+        color: var(--gto-text-main);
     }
 
     .gto-success-actions {
@@ -736,29 +752,31 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         text-decoration: none;
         cursor: pointer;
         border: 1px solid var(--gto-border-dark);
-        background: #ffffff;
-        color: #0f172a;
+        background: var(--gto-card-bg);
+        color: var(--gto-primary);
     }
 
     .gto-btn-primary {
         background: var(--gto-accent);
-        color: #ffffff;
+        color: var(--gto-card-bg);
         border-color: var(--gto-accent);
     }
 
     .gto-btn-primary:hover {
-        background: #ea580c;
+        background: var(--gto-accent);
+        opacity: 0.95;
     }
 
     .gto-btn:hover {
-        background: #f1f5f9;
+        background: var(--gto-row-hover);
     }
 </style>
+
 
 <!-- Top Navigation Header -->
 <div class="gto-header-bar">
     <div class="gto-title-group">
-        <i class="fas fa-concierge-bell" style="color: #f97316; font-size: 1.2rem;"></i>
+        <i class="fas fa-concierge-bell" style="color: var(--gto-accent); font-size: 1.2rem;"></i>
         <h1>Guest Table Ordering</h1>
         <span class="gto-status-badge"><i class="fas fa-check-circle"></i> Live Menu</span>
     </div>
@@ -773,9 +791,9 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 <?php if ($order_submitted && $placed_order): ?>
     <!-- Success Screen -->
     <div class="gto-success-card">
-        <i class="fas fa-check-circle" style="font-size: 4rem; color: #16a34a; margin-bottom: 1rem;"></i>
-        <h2 style="margin: 0 0 0.4rem; color: #0f172a;">Order Sent to Kitchen!</h2>
-        <p style="color: #64748b; margin: 0;">The guest order for Table <?php echo htmlspecialchars($placed_order['table_name']); ?> has been placed successfully.</p>
+        <i class="fas fa-check-circle" style="font-size: 4rem; color: var(--success-color, #16a34a); margin-bottom: 1rem;"></i>
+        <h2 style="margin: 0 0 0.4rem; color: var(--gto-text-main);">Order Sent to Kitchen!</h2>
+        <p style="color: var(--gto-text-muted); margin: 0;">The guest order for Table <?php echo htmlspecialchars($placed_order['table_name']); ?> has been placed successfully.</p>
 
         <div class="receipt">
             <p><strong>Order Reference:</strong> <?php echo htmlspecialchars($placed_order['reference']); ?></p>
@@ -783,11 +801,11 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
             <p><strong>Guest:</strong> <?php echo htmlspecialchars($placed_order['guest_name']); ?> (<?php echo (int) $placed_order['guest_count']; ?> guest(s))</p>
             <p style="margin-bottom: 0.6rem;"><strong>Items:</strong></p>
             <?php foreach ($placed_order['items'] as $it): ?>
-                <p style="margin: 0 0 0.2rem 1rem; font-size: 0.82rem;">
+                <p style="margin: 0 0 0.2rem 1rem; font-size: 0.82rem; color: var(--gto-text-main);">
                     <?php echo (int) $it['qty']; ?> × <?php echo htmlspecialchars($it['name']); ?> — GH₵<?php echo number_format($it['total'], 2); ?>
                 </p>
             <?php endforeach; ?>
-            <p style="margin: 0.6rem 0 0; border-top: 1px dashed #cbd5e1; padding-top: 0.5rem;"><strong>Total: GH₵<?php echo number_format($placed_order['total'], 2); ?></strong></p>
+            <p style="margin: 0.6rem 0 0; border-top: 1px dashed var(--gto-border-dark); padding-top: 0.5rem;"><strong>Total: GH₵<?php echo number_format($placed_order['total'], 2); ?></strong></p>
         </div>
 
         <div class="gto-success-actions">

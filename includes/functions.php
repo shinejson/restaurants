@@ -124,8 +124,8 @@ function send_order_notifications($order_id)
     if (!$order)
         return false;
 
-    // Fetch items
-    $stmt = $conn->prepare("SELECT oi.*, fi.item_name FROM order_items oi JOIN food_items fi ON oi.food_item_id = fi.id WHERE oi.order_id = ?");
+    // Fetch items (with tax configuration fields)
+    $stmt = $conn->prepare("SELECT oi.*, fi.item_name, fi.tax_group_id, fi.tax_group, fi.is_rate_inclusive FROM order_items oi JOIN food_items fi ON oi.food_item_id = fi.id WHERE oi.order_id = ?");
     $stmt->execute([$order_id]);
     $items = $stmt->fetchAll();
 
@@ -148,6 +148,34 @@ function send_order_notifications($order_id)
         </tr>';
     }
     $items_html .= '</table>';
+
+    // Tax summary — taxes are INCLUDED in the item prices, so we extract them
+    $tax_grouped = group_items_by_tax($items);
+    $total_tax_included = 0;
+    foreach ($tax_grouped as $tg) {
+        $total_tax_included += $tg['total_tax'];
+    }
+
+    $tax_html = '';
+    if ($total_tax_included > 0) {
+        $tax_html = "<div style='background:#fdf3ec; padding:12px 15px; margin:15px 0; border:1px solid #f5ddca; border-radius:5px;'>";
+        $tax_html .= "<h3 style='margin:0 0 8px; color:#555;'>Tax Summary <span style='font-weight:400; font-size:0.85em;'>(already included in item prices)</span></h3>";
+        foreach ($tax_grouped as $tg) {
+            if (!$tg['config'] || empty($tg['components'])) {
+                continue;
+            }
+            $tax_html .= "<div style='font-weight:bold; margin:8px 0 3px;'>" . htmlspecialchars($tg['name'])
+                . " &mdash; " . number_format($tg['total_rate'] * 100, 2) . "% combined</div>";
+            foreach ($tg['components'] as $c) {
+                $tax_html .= "<div style='display:flex; justify-content:space-between; padding:2px 0 2px 12px;'>"
+                    . "<span>" . htmlspecialchars($c['name']) . " (" . number_format($c['rate'] * 100, 2) . "%)</span>"
+                    . "<span>GH₵" . number_format($c['amount'], 2) . "</span></div>";
+            }
+        }
+        $tax_html .= "<div style='display:flex; justify-content:space-between; font-weight:bold; border-top:1px solid #e8d5c5; margin-top:8px; padding-top:6px;'>"
+            . "<span>Total Tax Included</span><span>GH₵" . number_format($total_tax_included, 2) . "</span></div>";
+        $tax_html .= "</div>";
+    }
 
     $company_name = get_setting('company_name', 'Airport West Hotel');
     $admin_email = get_setting('contact_email', 'restaurants@airportwesthotel.com.gh'); // Default to provided email
@@ -178,6 +206,7 @@ function send_order_notifications($order_id)
             
             <h3>Order Details</h3>
             $items_html
+            $tax_html
             
             <p style='margin-top: 20px;'>We hope you enjoy your meal!</p>
             <p><strong>$company_name</strong></p>
@@ -200,6 +229,7 @@ function send_order_notifications($order_id)
         
         <h3>Items Ordered:</h3>
         $items_html
+        $tax_html
         
         <p><a href='" . BASE_URL . "/admin/orders/view.php?id=" . $order['id'] . "' style='background: #3498db; color: white; padding: 10px 15px; text-decoration: none;'>View in Admin Panel</a></p>
     </body>
@@ -327,9 +357,299 @@ function ensure_restaurant_tables_schema($conn = null)
     }
 }
 
+function ensure_tax_schema($conn = null)
+{
+    static $ensured = false;
+    if ($ensured) return;
+
+    if ($conn === null) {
+        global $conn;
+    }
+    if (!$conn) return;
+
+    try {
+        $conn->exec("CREATE TABLE IF NOT EXISTS tax_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL UNIQUE,
+            rate DECIMAL(7,4) NOT NULL DEFAULT 0.0000,
+            description VARCHAR(255) NULL,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $conn->exec("CREATE TABLE IF NOT EXISTS tax_groups (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL UNIQUE,
+            description VARCHAR(255) NULL,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $conn->exec("CREATE TABLE IF NOT EXISTS tax_group_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            tax_group_id INT NOT NULL,
+            tax_item_id INT NOT NULL,
+            UNIQUE KEY uq_group_item (tax_group_id, tax_item_id),
+            FOREIGN KEY (tax_group_id) REFERENCES tax_groups(id) ON DELETE CASCADE,
+            FOREIGN KEY (tax_item_id) REFERENCES tax_items(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $cols = $conn->query("SHOW COLUMNS FROM food_items")->fetchAll(PDO::FETCH_COLUMN);
+        if (!empty($cols) && !in_array('tax_group_id', $cols, true)) {
+            $conn->exec("ALTER TABLE food_items ADD COLUMN tax_group_id INT NULL");
+        }
+
+        $ensured = true;
+    } catch (Exception $e) {
+        // Silently skip if database errors occur
+    }
+}
+
+/* ==========================================================================
+   TAX HELPERS
+   Taxes are INCLUSIVE: the displayed/paid price already contains the tax.
+   The breakdown below EXTRACTS the tax portion out of each amount.
+   ========================================================================== */
+
+/**
+ * Fetch all active tax groups with their component tax items.
+ * Cached per request. Keyed by group name, e.g.:
+ * ['Standard' => ['id'=>1, 'name'=>'Standard',
+ *   'taxes'=>[['name'=>'VAT','rate'=>0.125], ...], 'total_rate'=>0.175]]
+ */
+function get_tax_groups_map()
+{
+    global $conn;
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    $map = [];
+    try {
+        ensure_tax_schema($conn);
+        $sql = "SELECT tg.id AS group_id, tg.name AS group_name,
+                       ti.name AS tax_name, ti.rate AS tax_rate
+                FROM tax_groups tg
+                LEFT JOIN tax_group_items tgi ON tgi.tax_group_id = tg.id
+                LEFT JOIN tax_items ti ON ti.id = tgi.tax_item_id AND ti.is_active = 1
+                WHERE tg.is_active = 1
+                ORDER BY tg.name ASC, ti.name ASC";
+        $rows = $conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($rows as $r) {
+            $gname = $r['group_name'];
+            if (!isset($map[$gname])) {
+                $map[$gname] = [
+                    'id'         => (int) $r['group_id'],
+                    'name'       => $gname,
+                    'taxes'      => [],
+                    'total_rate' => 0.0,
+                ];
+            }
+            if ($r['tax_name'] !== null) {
+                $rate = (float) $r['tax_rate'];
+                $map[$gname]['taxes'][] = ['name' => $r['tax_name'], 'rate' => $rate];
+                $map[$gname]['total_rate'] += $rate;
+            }
+        }
+    } catch (Exception $e) {
+        $map = [];
+    }
+
+    $cache = $map;
+    return $cache;
+}
+
+/**
+ * Resolve the tax group configuration for a food item row.
+ * Prefers tax_group_id, falls back to the tax_group name (imported data).
+ * Returns the group array or null when the item has no (active) group.
+ */
+function resolve_item_tax_group($item)
+{
+    $groups = get_tax_groups_map();
+    if (empty($groups)) {
+        return null;
+    }
+
+    if (!empty($item['tax_group_id'])) {
+        foreach ($groups as $g) {
+            if ($g['id'] == $item['tax_group_id']) {
+                return $g;
+            }
+        }
+    }
+
+    if (!empty($item['tax_group'])) {
+        return $groups[$item['tax_group']] ?? null;
+    }
+
+    return null;
+}
+
+/**
+ * Split a gross amount into net + per-tax components.
+ * When $is_rate_inclusive is true the tax is EXTRACTED from the gross
+ * (price already contains tax):  net = gross / (1 + total_rate).
+ * Otherwise the tax is computed on top of the gross.
+ */
+function calculate_tax_breakdown($gross, $group, $is_rate_inclusive = true)
+{
+    $gross = (float) $gross;
+    $result = [
+        'gross'      => $gross,
+        'net'        => $gross,
+        'total_tax'  => 0.0,
+        'total_rate' => 0.0,
+        'components' => [],
+        'group'      => $group,
+    ];
+
+    if (!$group || empty($group['taxes']) || $group['total_rate'] <= 0) {
+        return $result;
+    }
+
+    $total_rate = (float) $group['total_rate'];
+    $result['total_rate'] = $total_rate;
+
+    if ($is_rate_inclusive) {
+        $net       = $gross / (1 + $total_rate);
+        $tax_total = $gross - $net;
+    } else {
+        $net       = $gross;
+        $tax_total = $gross * $total_rate;
+    }
+
+    $components = [];
+    $sum        = 0.0;
+    foreach ($group['taxes'] as $tax) {
+        $share  = $total_rate > 0 ? ($tax['rate'] / $total_rate) : 0;
+        $amount = round($is_rate_inclusive ? ($tax_total * $share) : ($gross * $tax['rate']), 2);
+        $components[] = [
+            'name'   => $tax['name'],
+            'rate'   => (float) $tax['rate'],
+            'amount' => $amount,
+        ];
+        $sum += $amount;
+    }
+
+    // Fix rounding drift so components always add up to the total tax
+    // (compared in whole cents to avoid floating-point noise)
+    $total_tax = round($tax_total, 2);
+    $diff_cents = (int) round(($total_tax - $sum) * 100);
+    if (!empty($components) && $diff_cents !== 0) {
+        $max_idx = 0;
+        for ($i = 1; $i < count($components); $i++) {
+            if ($components[$i]['amount'] > $components[$max_idx]['amount']) {
+                $max_idx = $i;
+            }
+        }
+        $components[$max_idx]['amount'] = round($components[$max_idx]['amount'] + ($diff_cents / 100), 2);
+    }
+
+    $result['net']        = round($gross - $total_tax, 2);
+    $result['total_tax']  = $total_tax;
+    $result['components'] = $components;
+    return $result;
+}
+
+/**
+ * Group cart/order items by their tax group and compute the included-tax
+ * breakdown for each group.
+ *
+ * Each item row needs: price (unit price actually charged), quantity (or qty),
+ * and optionally tax_group_id / tax_group / is_rate_inclusive / request_price.
+ * Returns an ordered list of groups:
+ * [ ['key','name','config','items','gross','net','total_tax','components'=>[...]], ... ]
+ * Items without a resolvable tax group are collected under key '__no_tax__'.
+ */
+function group_items_by_tax($items)
+{
+    $groups = [];
+    $order  = [];
+
+    foreach ($items as $it) {
+        $group     = resolve_item_tax_group($it);
+        $inclusive = !empty($it['is_rate_inclusive']);
+        $key       = $group ? $group['name'] : '__no_tax__';
+
+        if (!isset($groups[$key])) {
+            $order[] = $key;
+            $groups[$key] = [
+                'key'        => $key,
+                'name'       => $group ? $group['name'] : 'No Tax Group',
+                'config'     => $group,
+                'total_rate' => $group ? (float) $group['total_rate'] : 0.0,
+                'items'      => [],
+                'gross'      => 0.0,
+                'total_tax'  => 0.0,
+                'components' => [],
+            ];
+        }
+
+        $qty        = isset($it['quantity']) ? (int) $it['quantity'] : (isset($it['qty']) ? (int) $it['qty'] : 1);
+        $line_gross = ((float) $it['price']) * $qty;
+        if (isset($it['request_price'])) {
+            $line_gross += (float) $it['request_price'];
+        }
+
+        $groups[$key]['items'][] = $it;
+        $groups[$key]['gross']  += $line_gross;
+
+        // Only extract tax for tax-inclusive pricing (tax is inside the price)
+        if ($group && $inclusive) {
+            $bd = calculate_tax_breakdown($line_gross, $group, true);
+            $groups[$key]['total_tax'] += $bd['total_tax'];
+            foreach ($bd['components'] as $c) {
+                if (!isset($groups[$key]['components'][$c['name']])) {
+                    $groups[$key]['components'][$c['name']] = [
+                        'name'   => $c['name'],
+                        'rate'   => $c['rate'],
+                        'amount' => 0.0,
+                    ];
+                }
+                $groups[$key]['components'][$c['name']]['amount'] += $c['amount'];
+            }
+        }
+    }
+
+    foreach ($groups as $k => $grp) {
+        $groups[$k]['gross'] = round($grp['gross'], 2);
+        $groups[$k]['total_tax'] = round($grp['total_tax'], 2);
+        $groups[$k]['net'] = round($grp['gross'] - $grp['total_tax'], 2);
+        foreach ($groups[$k]['components'] as $ck => $c) {
+            $groups[$k]['components'][$ck]['amount'] = round($c['amount'], 2);
+        }
+
+        // Reconcile: make the components sum EXACTLY to the group's total tax
+        if (!empty($groups[$k]['components'])) {
+            $comp_sum = 0.0;
+            $max_ck   = null;
+            foreach ($groups[$k]['components'] as $ck => $c) {
+                $comp_sum += $c['amount'];
+                if ($max_ck === null || $c['amount'] > $groups[$k]['components'][$max_ck]['amount']) {
+                    $max_ck = $ck;
+                }
+            }
+            $diff_cents = (int) round(($groups[$k]['total_tax'] - $comp_sum) * 100);
+            if ($diff_cents !== 0) {
+                $groups[$k]['components'][$max_ck]['amount'] = round($groups[$k]['components'][$max_ck]['amount'] + ($diff_cents / 100), 2);
+            }
+        }
+    }
+
+    $ordered = [];
+    foreach ($order as $k) {
+        $ordered[$k] = $groups[$k];
+    }
+    return $ordered;
+}
+
 if (isset($conn) && $conn instanceof PDO) {
     ensure_order_schema($conn);
     ensure_table_logs_schema($conn);
     ensure_restaurant_tables_schema($conn);
+    ensure_tax_schema($conn);
 }
 ?>

@@ -57,30 +57,146 @@ body {
 /* Sidebar Styling */
 :root {
   --sidebar-collapsed-width: 80px;
+  --sidebar-accent: #00bfa5;
+  --sidebar-bg: #1e2229;
+  --sidebar-bg-dark: #171a20;
 }
 
 .admin-sidebar {
   width: var(--sidebar-width);
-  background: var(--dark-color);
+  background: var(--sidebar-bg);
   color: white;
-  padding: 2rem 0;
+  padding: 0;
   transition: var(--transition);
   position: sticky;
   top: 0;
   height: 100vh;
   z-index: 1000;
   overflow-y: auto;
-  border-right: 1px solid var(--border-color);
+  overflow-x: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
   white-space: nowrap;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Top Icon Tabs ---- */
+.sidebar-tabs {
+  display: flex;
+  align-items: stretch;
+  background: var(--sidebar-bg-dark);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.sidebar-tab {
+  flex: 1;
+  height: 56px;
+  min-width: 56px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  color: #9aa5b1;
+  font-size: 1.05rem;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-tab:last-of-type {
+  border-right: none;
+}
+
+.sidebar-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-tab.active {
+  background: var(--sidebar-accent);
+  color: #ffffff;
+}
+
+/* Downward arrow under the active tab */
+.sidebar-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 9px solid var(--sidebar-accent);
+}
+
+.sidebar-close {
+  display: none;
+  width: 56px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  color: #9aa5b1;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+
+/* ---- Switchable Menu Panels ---- */
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 0;
+}
+
+.sidebar-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: none;
+}
+
+.sidebar-menu.sidebar-group.active {
+  display: block;
+}
+
+.sidebar-logout {
+  display: block;
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.5rem;
 }
 
 .admin-sidebar.collapsed {
   width: var(--sidebar-collapsed-width);
 }
 
-.admin-sidebar.collapsed .sidebar-label,
+.admin-sidebar.collapsed .sidebar-tabs {
+  flex-wrap: wrap;
+  background: #0d0f13;
+  border-bottom: 2px solid var(--sidebar-accent);
+}
+
+.admin-sidebar.collapsed .sidebar-tab {
+  flex: 1 1 50%;
+  color: var(--sidebar-accent);
+}
+
+.admin-sidebar.collapsed .sidebar-tab:hover {
+  color: #ffffff;
+  background: rgba(0, 191, 165, 0.15);
+}
+
+.admin-sidebar.collapsed .sidebar-tab.active {
+  color: #ffffff;
+}
+
 .admin-sidebar.collapsed .menu-text,
 .admin-sidebar.collapsed .sidebar-header-text {
   opacity: 0;
@@ -90,14 +206,13 @@ body {
 }
 
 .admin-sidebar.collapsed a {
-  padding: 0.85rem;
+  padding: 0.95rem 0;
   justify-content: center;
-  margin: 4px 8px;
 }
 
 .admin-sidebar.collapsed a i {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.3rem;
 }
 
 /* Top Navigation */
@@ -288,32 +403,39 @@ body {
 }
 
 .admin-sidebar a {
-  padding: 0.85rem 1.75rem;
-  color: #94a3b8;
+  padding: 0.95rem 1.5rem;
+  color: #b8c2cc;
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  margin: 4px 12px;
-  border-radius: 12px;
+  gap: 1rem;
+  border-left: 3px solid transparent;
   transition: var(--transition);
   font-weight: 500;
+  font-size: 0.95rem;
 }
 
 .admin-sidebar a i {
-  font-size: 1.1rem;
+  width: 22px;
+  text-align: center;
+  font-size: 1.05rem;
+  color: #8a97a3;
   transition: var(--transition);
 }
 
-.admin-sidebar li.active a,
 .admin-sidebar a:hover {
-  color: white;
-  background: rgba(255, 107, 53, 0.15);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-sidebar li.active a {
+  color: var(--sidebar-accent);
+  background: rgba(0, 191, 165, 0.08);
+  border-left-color: var(--sidebar-accent);
 }
 
 .admin-sidebar li.active a i {
-  color: var(--primary-color);
-  transform: scale(1.1);
+  color: var(--sidebar-accent);
 }
 
 /* Glassmorphism Cards */
@@ -583,6 +705,11 @@ body {
       display: block !important;
       opacity: 1 !important;
       width: auto !important;
+  }
+  .sidebar-close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
   }
   .admin-content-padding {
     padding: 1.5rem;

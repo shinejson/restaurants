@@ -14,9 +14,17 @@ $order = $stmt->fetch();
 if (!$order)
     die('Order not found');
 
-$stmt = $conn->prepare("SELECT oi.*, fi.item_name FROM order_items oi JOIN food_items fi ON oi.food_item_id = fi.id WHERE oi.order_id = ?");
+$stmt = $conn->prepare("SELECT oi.*, fi.item_name, fi.tax_group_id, fi.tax_group, fi.is_rate_inclusive FROM order_items oi JOIN food_items fi ON oi.food_item_id = fi.id WHERE oi.order_id = ?");
 $stmt->execute([$id]);
 $items = $stmt->fetchAll();
+
+// Group items by tax group & compute the tax breakdown
+// (taxes are INCLUDED in the item prices — they are extracted, not added)
+$tax_grouped = group_items_by_tax($items);
+$total_tax_included = 0;
+foreach ($tax_grouped as $tg) {
+    $total_tax_included += $tg['total_tax'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -116,7 +124,17 @@ $items = $stmt->fetchAll();
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($items as $item): ?>
+            <?php foreach ($tax_grouped as $tgroup): ?>
+                <tr>
+                    <td colspan="3"
+                        style="padding-top: 8px; font-size: 0.78rem; color: #888; letter-spacing: 0.5px;">
+                        --- <?php echo $tgroup['config'] ? strtoupper(htmlspecialchars($tgroup['name'])) : 'ITEMS'; ?>
+                        <?php if ($tgroup['config'] && $tgroup['total_rate'] > 0): ?>
+                            (<?php echo number_format($tgroup['total_rate'] * 100, 2); ?>% INCL.)
+                        <?php endif; ?> ---
+                    </td>
+                </tr>
+                <?php foreach ($tgroup['items'] as $item): ?>
                 <tr>
                     <td style="vertical-align: top;">
                         <span class="bold"><?php echo htmlspecialchars($item['item_name']); ?></span>
@@ -140,6 +158,7 @@ $items = $stmt->fetchAll();
                         ?>
                     </td>
                 </tr>
+                <?php endforeach; ?>
             <?php endforeach; ?>
         </tbody>
     </table>
@@ -161,6 +180,29 @@ $items = $stmt->fetchAll();
             <span><?php echo format_currency($delivery_charge); ?></span>
         </div>
     </div>
+
+    <?php if ($total_tax_included > 0): ?>
+        <div class="sep"></div>
+
+        <div style="font-size: 0.85rem;">
+            <div class="bold" style="margin-bottom: 5px;">TAX SUMMARY (INCLUDED IN PRICES)</div>
+            <?php foreach ($tax_grouped as $tgroup): ?>
+                <?php if (!$tgroup['config'] || empty($tgroup['components']))
+                    continue; ?>
+                <?php foreach ($tgroup['components'] as $comp): ?>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                        <span><?php echo htmlspecialchars($comp['name']); ?>
+                            <?php echo number_format($comp['rate'] * 100, 2); ?>%</span>
+                        <span><?php echo format_currency($comp['amount']); ?></span>
+                    </div>
+                <?php endforeach; ?>
+            <?php endforeach; ?>
+            <div style="display: flex; justify-content: space-between; margin-top: 5px;" class="bold">
+                <span>Total Tax Included:</span>
+                <span><?php echo format_currency($total_tax_included); ?></span>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <div class="sep"></div>
 

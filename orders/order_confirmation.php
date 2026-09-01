@@ -14,9 +14,17 @@ if (!$order) {
     die('Order not found');
 }
 
-$item_stmt = $conn->prepare("SELECT oi.*, fi.item_name FROM order_items oi JOIN food_items fi ON oi.food_item_id = fi.id WHERE order_id = ?");
+$item_stmt = $conn->prepare("SELECT oi.*, fi.item_name, fi.tax_group_id, fi.tax_group, fi.is_rate_inclusive FROM order_items oi JOIN food_items fi ON oi.food_item_id = fi.id WHERE order_id = ?");
 $item_stmt->execute([$order['id']]);
 $items = $item_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Group items by tax group & compute the tax breakdown
+// (taxes are INCLUDED in the item prices — they are extracted, not added)
+$tax_grouped = group_items_by_tax($items);
+$total_tax_included = 0;
+foreach ($tax_grouped as $tg) {
+    $total_tax_included += $tg['total_tax'];
+}
 ?>
 
 <div class="confirmation-wrapper" style="max-width: 800px; margin: 4rem auto; padding: 0 1rem;">
@@ -73,7 +81,22 @@ $items = $item_stmt->fetchAll(PDO::FETCH_ASSOC);
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($items as $item): ?>
+                            <?php foreach ($tax_grouped as $tgroup): ?>
+                                <!-- Tax group separator -->
+                                <tr style="background: #f8f9fa;">
+                                    <td colspan="4"
+                                        style="padding: 0.8rem 0; font-weight: 700; color: #555; font-size: 0.85rem;">
+                                        <i class="fas fa-layer-group" style="color: #28a745;"></i>
+                                        <?php echo $tgroup['config'] ? 'Tax Group: ' . htmlspecialchars($tgroup['name']) : 'Items'; ?>
+                                        <?php if ($tgroup['config'] && $tgroup['total_rate'] > 0): ?>
+                                            <span
+                                                style="background: rgba(40,167,69,.12); color: #2e7d32; padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-weight: 700; margin-left: 0.4rem;">
+                                                <?php echo number_format($tgroup['total_rate'] * 100, 2); ?>% (included)
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php foreach ($tgroup['items'] as $item): ?>
                                 <tr style="border-bottom: 1px solid #f9f9f9;">
                                     <td style="padding: 1.2rem 0; font-weight: 600; color: #333;">
                                         <?php echo htmlspecialchars($item['item_name']); ?>
@@ -88,6 +111,7 @@ $items = $item_stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <?php echo format_currency($item['price'] * $item['quantity']); ?>
                                     </td>
                                 </tr>
+                                <?php endforeach; ?>
                             <?php endforeach; ?>
                         </tbody>
                         <tfoot>
@@ -99,6 +123,16 @@ $items = $item_stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <?php echo format_currency($order['total'] - $order['delivery_charge']); ?>
                                 </td>
                             </tr>
+                            <?php if ($total_tax_included > 0): ?>
+                                <tr>
+                                    <td colspan="3"
+                                        style="padding: 0.4rem 0; text-align: right; font-weight: 600; color: #aaa; font-size: 0.9rem;">
+                                        (of which taxes included):</td>
+                                    <td
+                                        style="padding: 0.4rem 0; text-align: right; font-weight: 600; color: #aaa; font-size: 0.9rem;">
+                                        <?php echo format_currency($total_tax_included); ?></td>
+                                </tr>
+                            <?php endif; ?>
                             <tr>
                                 <td colspan="3"
                                     style="padding: 0.5rem 0; text-align: right; font-weight: 600; color: #888;">
@@ -119,6 +153,42 @@ $items = $item_stmt->fetchAll(PDO::FETCH_ASSOC);
                         </tfoot>
                     </table>
                 </div>
+
+                <!-- Tax Summary (taxes are already included in the item prices) -->
+                <?php if ($total_tax_included > 0): ?>
+                    <div
+                        style="background: #f8fbf8; border: 1px solid #d9ead9; border-radius: 10px; padding: 1.5rem; margin-top: 1.5rem;">
+                        <h4 style="margin: 0 0 1rem; color: #333;">
+                            <i class="fas fa-percentage" style="color: #28a745;"></i> Tax Summary
+                            <span style="font-weight: 400; color: #888; font-size: 0.85rem;">(already included in item
+                                prices)</span>
+                        </h4>
+                        <?php foreach ($tax_grouped as $tgroup): ?>
+                            <?php if (!$tgroup['config'] || empty($tgroup['components']))
+                                continue; ?>
+                            <div style="margin-bottom: 0.8rem;">
+                                <div style="font-weight: 700; color: #555; margin-bottom: 0.3rem;">
+                                    <?php echo htmlspecialchars($tgroup['name']); ?>
+                                    <span style="font-weight: 400; color: #888;">—
+                                        <?php echo number_format($tgroup['total_rate'] * 100, 2); ?>% combined</span>
+                                </div>
+                                <?php foreach ($tgroup['components'] as $comp): ?>
+                                    <div
+                                        style="display: flex; justify-content: space-between; padding: 0.2rem 0 0.2rem 1rem; color: #666;">
+                                        <span><?php echo htmlspecialchars($comp['name']); ?>
+                                            (<?php echo number_format($comp['rate'] * 100, 2); ?>%)</span>
+                                        <span><?php echo format_currency($comp['amount']); ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endforeach; ?>
+                        <div
+                            style="display: flex; justify-content: space-between; font-weight: 800; color: #333; border-top: 2px solid #d9ead9; padding-top: 0.7rem;">
+                            <span>Total tax included in this order</span>
+                            <span style="color: #28a745;"><?php echo format_currency($total_tax_included); ?></span>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <!-- Timeline/Steps -->

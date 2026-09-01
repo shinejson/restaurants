@@ -143,6 +143,31 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 ?>
 
 <style>
+    /* Kiosk theme variables mapped to global admin theme */
+    :root {
+        --kiosk-bg: var(--light-bg, #f3f4f6);
+        --kiosk-border: var(--border-color, #edf2f7);
+        --kiosk-border-dark: #dfe7ef;
+        --kiosk-text-main: var(--text-main, #111827);
+        --kiosk-text-muted: var(--text-muted, #64748b);
+        --kiosk-primary: var(--primary-color, #f97316);
+        --kiosk-primary-dark: #ea580c;
+        --kiosk-card-bg: var(--white, #ffffff);
+        --kiosk-card-alt: var(--glass, #f8fafc);
+        --kiosk-btn-gradient-from: var(--kiosk-primary);
+        --kiosk-btn-gradient-to: var(--kiosk-primary-dark);
+    }
+
+    html[data-theme="dark"] {
+        --kiosk-bg: var(--light-bg);
+        --kiosk-border: var(--border-color);
+        --kiosk-border-dark: #2d3748;
+        --kiosk-text-main: var(--text-main);
+        --kiosk-text-muted: var(--text-muted);
+        --kiosk-card-bg: var(--white);
+        --kiosk-card-alt: rgba(255,255,255,0.02);
+    }
+
     .kiosk-layout {
         display: grid;
         grid-template-columns: minmax(0, 1.7fr) minmax(300px, 420px);
@@ -151,8 +176,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .card {
-        background: #fff;
-        border: 1px solid #edf2f7;
+        background: var(--kiosk-card-bg);
+        border: 1px solid var(--kiosk-border);
         border-radius: 20px;
         box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
         padding: 1.5rem;
@@ -169,9 +194,11 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         flex: 1;
         min-width: 200px;
         padding: 0.9rem 1rem;
-        border: 1px solid #dfe7ef;
+        border: 1px solid var(--kiosk-border-dark);
         border-radius: 12px;
         font-size: 0.95rem;
+        background: var(--kiosk-card-bg);
+        color: var(--kiosk-text-main);
     }
 
     .quick-grid {
@@ -181,8 +208,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .quick-item {
-        background: linear-gradient(180deg, #fff 0%, #fff7f3 100%);
-        border: 1px solid #f5d7c7;
+        background: linear-gradient(180deg, var(--kiosk-card-bg) 0%, rgba(255,247,243,0.9) 100%);
+        border: 1px solid rgba(249,115,22,0.12);
         border-radius: 16px;
         padding: 0.9rem;
         min-height: 120px;
@@ -195,22 +222,22 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .quick-item h4 {
         margin: 0;
         font-size: 0.96rem;
-        color: #111827;
+        color: var(--kiosk-text-main);
     }
 
     .quick-item .item-meta {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        color: #e11d48;
+        color: var(--kiosk-primary);
         font-weight: 800;
     }
 
     .quick-btn {
         border: none;
         border-radius: 10px;
-        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-        color: white;
+        background: linear-gradient(135deg, var(--kiosk-btn-gradient-from) 0%, var(--kiosk-btn-gradient-to) 100%);
+        color: var(--kiosk-card-bg);
         padding: 0.7rem 0.8rem;
         font-weight: 800;
         cursor: pointer;
@@ -242,10 +269,11 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .form-field textarea {
         width: 100%;
         padding: 0.8rem 0.9rem;
-        border: 1px solid #dfe7ef;
+        border: 1px solid var(--kiosk-border-dark);
         border-radius: 10px;
         font-size: 0.95rem;
-        background: #fff;
+        background: var(--kiosk-card-bg);
+        color: var(--kiosk-text-main);
     }
 
     .cart-list {
@@ -261,25 +289,25 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         justify-content: space-between;
         gap: 0.75rem;
         align-items: center;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        background: var(--kiosk-card-alt);
+        border: 1px solid var(--kiosk-border);
         border-radius: 12px;
         padding: 0.7rem 0.8rem;
     }
 
     .cart-item strong {
         display: block;
-        color: #111827;
+        color: var(--kiosk-text-main);
     }
 
     .cart-item small {
-        color: #64748b;
+        color: var(--kiosk-text-muted);
     }
 
     .remove-btn {
         border: none;
-        background: #fee2e2;
-        color: #991b1b;
+        background: rgba(254,226,226,0.9);
+        color: var(--danger-color, #991b1b);
         border-radius: 8px;
         width: 30px;
         height: 30px;
@@ -287,9 +315,14 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         font-weight: 800;
     }
 
+    .empty-note {
+        color: var(--kiosk-text-muted);
+        font-weight: 700;
+    }
+
     .totals {
         margin-top: 1rem;
-        border-top: 1px solid #e2e8f0;
+        border-top: 1px solid var(--kiosk-border);
         padding-top: 0.9rem;
     }
 
@@ -297,15 +330,15 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: flex;
         justify-content: space-between;
         padding: 0.4rem 0;
-        color: #334155;
+        color: var(--kiosk-text-main);
         font-weight: 700;
     }
 
     .total-row.grand {
-        color: #9a4d00;
+        color: var(--kiosk-primary-dark);
         font-size: 1.15rem;
         font-weight: 800;
-        border-top: 1px solid #fed7aa;
+        border-top: 1px solid rgba(254,215,170,0.5);
         margin-top: 0.5rem;
         padding-top: 0.8rem;
     }
@@ -313,8 +346,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .btn-submit {
         width: 100%;
         border: none;
-        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-        color: white;
+        background: linear-gradient(135deg, var(--kiosk-btn-gradient-from) 0%, var(--kiosk-btn-gradient-to) 100%);
+        color: var(--kiosk-card-bg);
         padding: 1rem 1.2rem;
         border-radius: 12px;
         font-size: 1rem;
@@ -331,9 +364,9 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .alert-danger {
-        color: #991b1b;
-        background: #fee2e2;
-        border: 1px solid #fecaca;
+        color: var(--danger-color, #991b1b);
+        background: rgba(254,226,226,0.9);
+        border: 1px solid rgba(254,202,202,0.9);
     }
 
     @media (max-width: 980px) {
@@ -348,7 +381,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         <h1 style="margin:0; font-size:2rem; font-weight:800;">Cashier Kiosk</h1>
         <p style="margin:0.45rem 0 0; color:var(--text-muted);">Quick service with item search and fast sale entry.</p>
     </div>
-    <a href="index.php" class="btn-submit" style="width:auto; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; background:#0f172a; box-shadow:none;">
+    <a href="index.php" class="btn-submit" style="width:auto; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; background:linear-gradient(135deg,var(--kiosk-btn-gradient-from) 0%,var(--kiosk-btn-gradient-to) 100%); box-shadow:none; color:var(--kiosk-card-bg);">
         <i class="fas fa-arrow-left"></i> Dashboard
     </a>
 </div>
@@ -432,7 +465,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
             <h3 style="margin:1rem 0 0.75rem;">Current sale</h3>
             <ul class="cart-list" id="cartList">
-                <li style="color:#64748b; font-weight:700;">No items selected.</li>
+                <li class="empty-note">No items selected.</li>
             </ul>
 
             <div class="totals">
@@ -467,7 +500,7 @@ function formatCurrency(value) {
 function renderCart() {
     const entries = Object.entries(cart);
     if (!entries.length) {
-        cartList.innerHTML = '<li style="color:#64748b; font-weight:700;">No items selected.</li>';
+        cartList.innerHTML = '<li class="empty-note">No items selected.</li>';
         subtotalValue.textContent = formatCurrency(0);
         grandTotalValue.textContent = formatCurrency(0);
         cartData.value = '[]';
@@ -528,3 +561,5 @@ itemSearch.addEventListener('keydown', (event) => {
     }
 });
 </script>
+
+<?php include dirname(dirname(__FILE__)) . '/includes/admin_footer.php'; ?>

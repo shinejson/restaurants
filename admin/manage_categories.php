@@ -44,6 +44,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['csrf_token']) && $_POS
             }
             header('Location: manage_categories.php');
             exit;
+        } elseif ($_POST['main_action'] == 'edit') {
+            $id = (int) $_POST['id'];
+            try {
+                $stmt = $conn->prepare("UPDATE main_categories SET name = ? WHERE id = ?");
+                $stmt->execute([$name, $id]);
+                $_SESSION['category_success'] = 'Main category updated successfully!';
+            } catch (PDOException $e) {
+                if ($e->getCode() == 23000) {
+                    $_SESSION['category_error'] = 'A category with this name already exists!';
+                } else {
+                    $_SESSION['category_error'] = 'Error updating category: ' . $e->getMessage();
+                }
+            }
+            header('Location: manage_categories.php');
+            exit;
         } elseif ($_POST['main_action'] == 'delete') {
             $id = (int) $_POST['id'];
             try {
@@ -58,8 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['csrf_token']) && $_POS
         }
     } elseif (isset($_POST['sub_action'])) {
         $name = clean_input($_POST['name']);
-        $main_id = (int) $_POST['main_id'];
         if ($_POST['sub_action'] == 'add') {
+            $main_id = (int) $_POST['main_id'];
             try {
                 $stmt = $conn->prepare("INSERT INTO sub_categories (main_category_id, name) VALUES (?, ?)");
                 $stmt->execute([$main_id, $name]);
@@ -73,6 +88,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['csrf_token']) && $_POS
             }
             header('Location: manage_categories.php');
             exit;
+        } elseif ($_POST['sub_action'] == 'edit') {
+            $id = (int) $_POST['id'];
+            try {
+                $stmt = $conn->prepare("UPDATE sub_categories SET name = ? WHERE id = ?");
+                $stmt->execute([$name, $id]);
+                $_SESSION['category_success'] = 'Sub category updated successfully!';
+            } catch (PDOException $e) {
+                if ($e->getCode() == 23000) {
+                    $_SESSION['category_error'] = 'A sub-category with this name already exists!';
+                } else {
+                    $_SESSION['category_error'] = 'Error updating sub-category: ' . $e->getMessage();
+                }
+            }
+            header('Location: manage_categories.php');
+            exit;
         } elseif ($_POST['sub_action'] == 'delete') {
             $id = (int) $_POST['id'];
             try {
@@ -80,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['csrf_token']) && $_POS
                 $stmt->execute([$id]);
                 $_SESSION['category_success'] = 'Sub category deleted successfully!';
             } catch (PDOException $e) {
-                $_SESSION['category_error'] = 'Error deleting sub-category: ' . $e->getMessage();
+                $_SESSION['category_error'] = 'Error deleting sub category: ' . $e->getMessage();
             }
             header('Location: manage_categories.php');
             exit;
@@ -101,6 +131,49 @@ $subs = $sub_stmt->fetchAll();
 $admin_title = 'Manage Categories';
 include 'includes/admin_header.php';
 ?>
+
+<style>
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .btn-edit,
+    .btn-delete {
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: var(--transition);
+        text-decoration: none;
+    }
+
+    .btn-edit {
+        background: var(--info-color);
+        color: white;
+    }
+
+    .btn-edit:hover {
+        opacity: 0.85;
+        transform: translateY(-1px);
+    }
+
+    .btn-delete {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        opacity: 0.85;
+        transform: translateY(-1px);
+    }
+</style>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
     <div>
@@ -178,33 +251,37 @@ include 'includes/admin_header.php';
         <table class="data-table">
             <thead style="position: sticky; top: 0; background: var(--white); z-index: 10;">
                 <tr>
-                    <th>ID</th>
                     <th>Category Name</th>
-                    <th>Actions</th>
+                    <th style="width: 220px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($mains as $main): ?>
                     <tr>
-                        <td><?php echo $main['id']; ?></td>
                         <td><strong><?php echo htmlspecialchars($main['name']); ?></strong></td>
                         <td>
-                            <form method="POST" style="display:inline;"
-                                onsubmit="return confirm('Are you sure you want to delete this category? All related subcategories will be affected.');">
-                                <input type="hidden" name="main_action" value="delete">
-                                <input type="hidden" name="id" value="<?php echo $main['id']; ?>">
-                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                <button type="submit"
-                                    style="background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
-                                    <i class="fas fa-trash"></i> Delete
+                            <div class="action-buttons">
+                                <button type="button" class="btn-edit edit-btn" data-type="main"
+                                    data-id="<?php echo $main['id']; ?>"
+                                    data-name="<?php echo htmlspecialchars($main['name'], ENT_QUOTES); ?>">
+                                    <i class="fas fa-edit"></i> Edit
                                 </button>
-                            </form>
+                                <form method="POST" style="display:inline;"
+                                    onsubmit="return confirm('Are you sure you want to delete this category? All related subcategories will be affected.');">
+                                    <input type="hidden" name="main_action" value="delete">
+                                    <input type="hidden" name="id" value="<?php echo $main['id']; ?>">
+                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                    <button type="submit" class="btn-delete">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if (empty($mains)): ?>
                     <tr>
-                        <td colspan="3" style="text-align: center; padding: 2rem;">No main categories found. Start by adding
+                        <td colspan="2" style="text-align: center; padding: 2rem;">No main categories found. Start by adding
                             one!</td>
                     </tr>
                 <?php endif; ?>
@@ -246,42 +323,122 @@ include 'includes/admin_header.php';
         <table class="data-table">
             <thead style="position: sticky; top: 0; background: var(--white); z-index: 10;">
                 <tr>
-                    <th>ID</th>
                     <th>Main Category</th>
                     <th>Sub Category Name</th>
-                    <th>Actions</th>
+                    <th style="width: 220px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($subs as $sub): ?>
                     <tr>
-                        <td><?php echo $sub['id']; ?></td>
                         <td><span
                                 style="background: #e9ecef; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.85rem; color: #495057;"><?php echo htmlspecialchars($sub['main_name']); ?></span>
                         </td>
                         <td><strong><?php echo htmlspecialchars($sub['name']); ?></strong></td>
                         <td>
-                            <form method="POST" style="display:inline;"
-                                onsubmit="return confirm('Are you sure you want to delete this sub category?');">
-                                <input type="hidden" name="sub_action" value="delete">
-                                <input type="hidden" name="id" value="<?php echo $sub['id']; ?>">
-                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                <button type="submit"
-                                    style="background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
-                                    <i class="fas fa-trash"></i> Delete
+                            <div class="action-buttons">
+                                <button type="button" class="btn-edit edit-btn" data-type="sub"
+                                    data-id="<?php echo $sub['id']; ?>"
+                                    data-name="<?php echo htmlspecialchars($sub['name'], ENT_QUOTES); ?>">
+                                    <i class="fas fa-edit"></i> Edit
                                 </button>
-                            </form>
+                                <form method="POST" style="display:inline;"
+                                    onsubmit="return confirm('Are you sure you want to delete this sub category?');">
+                                    <input type="hidden" name="sub_action" value="delete">
+                                    <input type="hidden" name="id" value="<?php echo $sub['id']; ?>">
+                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                    <button type="submit" class="btn-delete">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if (empty($subs)): ?>
                     <tr>
-                        <td colspan="4" style="text-align: center; padding: 2rem;">No sub categories found.</td>
+                        <td colspan="3" style="text-align: center; padding: 2rem;">No sub categories found.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
 </div>
+
+<!-- Edit Category Modal -->
+<div id="editCategoryModal" class="admin-modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h2 id="editModalTitle"><i class="fas fa-edit"></i> Edit Category</h2>
+            <button type="button" class="close-modal">&times;</button>
+        </div>
+        <form method="POST" id="editCategoryForm">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+            <input type="hidden" name="id" id="editId" value="">
+            <input type="hidden" name="main_action" id="editActionInput" value="edit">
+            <div class="form-group">
+                <label for="editName" id="editNameLabel">Category Name</label>
+                <input type="text" name="name" id="editName" class="form-control" required>
+            </div>
+            <div class="modal-footer" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); text-align: right;">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var modal = document.getElementById('editCategoryModal');
+        var modalTitle = document.getElementById('editModalTitle');
+        var editId = document.getElementById('editId');
+        var editName = document.getElementById('editName');
+        var editActionInput = document.getElementById('editActionInput');
+        var nameLabel = document.getElementById('editNameLabel');
+
+        function openModal(type, id, name) {
+            var isMain = type === 'main';
+            // The action input name decides whether the backend treats
+            // this as a main category or sub category update.
+            editActionInput.name = isMain ? 'main_action' : 'sub_action';
+            editActionInput.value = 'edit';
+            editId.value = id;
+            editName.value = name;
+            modalTitle.innerHTML = isMain
+                ? '<i class="fas fa-folder"></i> Edit Main Category'
+                : '<i class="fas fa-folder-open"></i> Edit Sub Category';
+            nameLabel.textContent = isMain ? 'Category Name' : 'Sub Category Name';
+            modal.classList.add('active');
+            setTimeout(function () { editName.focus(); }, 100);
+        }
+
+        // Wire up all edit buttons
+        document.querySelectorAll('.edit-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                openModal(btn.dataset.type, btn.dataset.id, btn.dataset.name);
+            });
+        });
+
+        // Close handlers
+        var closeBtn = modal.querySelector('.close-modal');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function () {
+                modal.classList.remove('active');
+            });
+        }
+        window.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                modal.classList.remove('active');
+            }
+        });
+    })();
+</script>
 
 <?php include 'includes/admin_footer.php'; ?>

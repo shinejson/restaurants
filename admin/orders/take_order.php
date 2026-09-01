@@ -179,16 +179,32 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 ?>
 
 <style>
+    /* Map local POS variables to global admin theme variables */
     :root {
-        --pos-bg: #f3f4f6;
-        --pos-border: #e5e7eb;
+        --pos-bg: var(--light-bg, #f3f4f6);
+        --pos-border: var(--border-color, #e5e7eb);
         --pos-border-dark: #d1d5db;
-        --pos-text-main: #1f2937;
-        --pos-text-muted: #6b7280;
-        --pos-primary: #0f172a;
-        --pos-accent: #2563eb;
-        --pos-active-tab: #0f172a;
-        --pos-card-bg: #ffffff;
+        --pos-text-main: var(--text-main, #1f2937);
+        --pos-text-muted: var(--text-muted, #6b7280);
+        --pos-primary: var(--dark-color, #0f172a);
+        --pos-accent: var(--primary-color, #2563eb);
+        --pos-active-tab: var(--pos-primary);
+        --pos-card-bg: var(--white, #ffffff);
+        --pos-card-alt: var(--glass, #f8fafc);
+        --pos-row-hover: rgba(0,0,0,0.02);
+    }
+
+    /* Dark theme-specific tweaks */
+    html[data-theme="dark"] {
+        --pos-bg: var(--light-bg);
+        --pos-border: var(--border-color);
+        --pos-border-dark: #2d3748;
+        --pos-text-main: var(--text-main);
+        --pos-text-muted: var(--text-muted);
+        --pos-primary: var(--dark-color);
+        --pos-card-bg: var(--white);
+        --pos-card-alt: rgba(255,255,255,0.02);
+        --pos-row-hover: rgba(255,255,255,0.02);
     }
 
     body {
@@ -199,7 +215,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: #ffffff;
+        background: var(--pos-card-bg);
         border: 1px solid var(--pos-border);
         border-radius: 8px;
         padding: 0.6rem 1rem;
@@ -223,7 +239,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: flex;
         align-items: center;
         gap: 1rem;
-        color: #64748b;
+        color: var(--pos-text-muted);
         font-size: 0.95rem;
     }
 
@@ -233,11 +249,11 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         gap: 0.4rem;
         font-size: 0.8rem;
         font-weight: 600;
-        color: #16a34a;
-        background: #f0fdf4;
+        color: var(--success-color, #16a34a);
+        background: rgba(16,185,129,0.08);
         padding: 0.25rem 0.6rem;
         border-radius: 9999px;
-        border: 1px solid #bbf7d0;
+        border: 1px solid rgba(16,185,129,0.15);
     }
 
     .pos-layout {
@@ -281,7 +297,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .pos-input-group i {
         position: absolute;
         left: 0.85rem;
-        color: #94a3b8;
+        color: var(--pos-text-muted);
         font-size: 0.95rem;
         pointer-events: none;
     }
@@ -292,7 +308,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         border: 1px solid var(--pos-border-dark);
         border-radius: 6px;
         font-size: 0.9rem;
-        background: #ffffff;
+        background: var(--pos-card-bg);
         color: var(--pos-text-main);
         outline: none;
         transition: border-color 0.15s ease;
@@ -305,7 +321,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     /* Category Nav */
     .pos-cat-section {
-        background: #ffffff;
+        background: var(--pos-card-bg);
         border: 1px solid var(--pos-border);
         border-radius: 8px;
         padding: 0.5rem 0.75rem;
@@ -329,13 +345,13 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .pos-pill {
-        background: #ffffff;
+        background: var(--pos-card-bg);
         border: 1px solid var(--pos-border-dark);
         border-radius: 6px;
         padding: 0.35rem 0.85rem;
         font-size: 0.82rem;
         font-weight: 600;
-        color: #475569;
+        color: var(--pos-text-muted);
         cursor: pointer;
         user-select: none;
         transition: all 0.15s ease;
@@ -344,14 +360,14 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .pos-pill:hover {
-        border-color: #0f172a;
-        color: #0f172a;
+        border-color: var(--pos-primary);
+        color: var(--pos-primary);
     }
 
     .pos-pill.active {
-        background: #0f172a;
-        color: #ffffff;
-        border-color: #0f172a;
+        background: var(--pos-primary);
+        color: var(--pos-card-bg);
+        border-color: var(--pos-primary);
     }
 
     .pos-subcat-row-container {
@@ -361,7 +377,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .pos-scroll-btn {
-        background: #f8fafc;
+        background: var(--pos-card-alt);
         border: 1px solid var(--pos-border-dark);
         border-radius: 6px;
         width: 32px;
@@ -370,7 +386,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        color: #475569;
+        color: var(--pos-text-muted);
         font-size: 0.8rem;
         flex-shrink: 0;
     }
@@ -381,7 +397,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     /* Product Grid */
     .pos-grid-container {
-        background: #ffffff;
+        background: var(--pos-card-bg);
         border: 1px solid var(--pos-border);
         border-radius: 8px;
         padding: 0.75rem;
@@ -397,7 +413,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .pos-card {
-        background: #f8fafc;
+        background: var(--pos-card-alt);
         border: 1px solid var(--pos-border);
         border-radius: 8px;
         padding: 0.6rem;
@@ -412,23 +428,23 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .pos-card:hover {
-        border-color: #3b82f6;
+        border-color: var(--pos-accent);
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
         transform: translateY(-1px);
-        background: #ffffff;
+        background: var(--pos-card-bg);
     }
 
     .pos-card.selected {
-        border: 2px solid #2563eb;
-        background: #eff6ff;
+        border: 2px solid var(--pos-accent);
+        background: rgba(37,99,235,0.08);
     }
 
     .pos-card-badge {
         position: absolute;
         top: 6px;
         right: 6px;
-        background: #2563eb;
-        color: #ffffff;
+        background: var(--pos-accent);
+        color: var(--pos-card-bg);
         font-size: 0.72rem;
         font-weight: 700;
         padding: 0.15rem 0.45rem;
@@ -440,10 +456,10 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #ffffff;
+        background: var(--pos-card-bg);
         border-radius: 6px;
         overflow: hidden;
-        border: 1px solid #f1f5f9;
+        border: 1px solid var(--pos-border);
         margin-bottom: 0.4rem;
     }
 
@@ -455,13 +471,13 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     .pos-card-icon {
         font-size: 1.6rem;
-        color: #94a3b8;
+        color: var(--pos-text-muted);
     }
 
     .pos-card-title {
         font-size: 0.78rem;
         font-weight: 700;
-        color: #1e293b;
+        color: var(--pos-text-main);
         text-align: center;
         line-height: 1.25;
         text-transform: uppercase;
@@ -475,7 +491,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .pos-card-price {
         font-size: 0.76rem;
         font-weight: 700;
-        color: #2563eb;
+        color: var(--pos-accent);
         text-align: center;
     }
 
@@ -484,7 +500,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         gap: 0.4rem;
-        background: #ffffff;
+        background: var(--pos-card-bg);
         border: 1px solid var(--pos-border);
         border-radius: 8px;
         padding: 0.5rem;
@@ -505,8 +521,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         padding: 0.5rem 0.25rem;
         border: 1px solid var(--pos-border-dark);
         border-radius: 6px;
-        background: #ffffff;
-        color: #334155;
+        background: var(--pos-card-bg);
+        color: var(--pos-text-main);
         font-size: 0.72rem;
         font-weight: 700;
         cursor: pointer;
@@ -514,8 +530,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .pos-btn:hover {
-        background: #f1f5f9;
-        border-color: #0f172a;
+        background: var(--pos-row-hover);
+        border-color: var(--pos-primary);
     }
 
     .pos-btn i {
@@ -523,19 +539,19 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .pos-btn-cancel {
-        border-color: #fca5a5;
-        color: #dc2626;
-        background: #fff5f5;
+        border-color: rgba(252,165,165,0.6);
+        color: var(--danger-color, #dc2626);
+        background: rgba(255,245,245,0.6);
     }
 
     .pos-btn-cancel:hover {
-        background: #fee2e2;
-        border-color: #dc2626;
+        background: rgba(254,226,226,0.8);
+        border-color: var(--danger-color, #dc2626);
     }
 
     /* Right Section - Cart Panel */
     .pos-cart-panel {
-        background: #ffffff;
+        background: var(--pos-card-bg);
         border: 1px solid var(--pos-border);
         border-radius: 8px;
         display: flex;
@@ -585,10 +601,10 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     .pos-cart-count-bar {
         padding: 0.45rem 1rem;
-        background: #f8fafc;
+        background: var(--pos-card-alt);
         border-bottom: 1px solid var(--pos-border);
         font-size: 0.8rem;
-        color: #64748b;
+        color: var(--pos-text-muted);
         font-weight: 600;
     }
 
@@ -596,7 +612,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .pos-customer-expander {
         border-bottom: 1px solid var(--pos-border);
         padding: 0.6rem 1rem;
-        background: #fafafa;
+        background: var(--pos-card-alt);
     }
 
     .pos-customer-summary {
@@ -605,7 +621,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         justify-content: space-between;
         font-size: 0.8rem;
         font-weight: 600;
-        color: #334155;
+        color: var(--pos-text-main);
         cursor: pointer;
     }
 
@@ -613,7 +629,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: none;
         margin-top: 0.6rem;
         padding-top: 0.6rem;
-        border-top: 1px dashed #e2e8f0;
+        border-top: 1px dashed var(--pos-border);
     }
 
     .pos-customer-details.show {
@@ -636,7 +652,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         align-items: center;
         justify-content: center;
         height: 100%;
-        color: #94a3b8;
+        color: var(--pos-text-muted);
         text-align: center;
         padding: 2rem;
     }
@@ -656,7 +672,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     /* Cart Item Card */
     .pos-cart-item {
-        background: #ffffff;
+        background: var(--pos-card-bg);
         border: 1px solid var(--pos-border);
         border-radius: 6px;
         padding: 0.6rem;
@@ -675,7 +691,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .pos-cart-item-name {
         font-size: 0.82rem;
         font-weight: 700;
-        color: #1e293b;
+        color: var(--pos-text-main);
         flex: 1;
     }
 
@@ -690,8 +706,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         height: 26px;
         border: 1px solid var(--pos-border-dark);
         border-radius: 4px;
-        background: #ffffff;
-        color: #0f172a;
+        background: var(--pos-card-bg);
+        color: var(--pos-primary);
         font-weight: 700;
         cursor: pointer;
         display: flex;
@@ -701,7 +717,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .pos-qty-btn:hover {
-        background: #e2e8f0;
+        background: var(--pos-row-hover);
     }
 
     .pos-qty-val {
@@ -716,7 +732,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .pos-cart-item-price {
         font-size: 0.82rem;
         font-weight: 700;
-        color: #0f172a;
+        color: var(--pos-primary);
         min-width: 65px;
         text-align: right;
     }
@@ -724,7 +740,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .pos-cart-item-opt-btn {
         background: none;
         border: none;
-        color: #64748b;
+        color: var(--pos-text-muted);
         cursor: pointer;
         font-size: 0.8rem;
         padding: 0 0.2rem;
@@ -750,7 +766,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         width: 100%;
         padding: 0.3rem 0.5rem;
         font-size: 0.75rem;
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--pos-border-dark);
         border-radius: 4px;
     }
 
@@ -758,7 +774,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     .pos-summary {
         border-top: 1px solid var(--pos-border);
         padding: 0.75rem 1rem;
-        background: #ffffff;
+        background: var(--pos-card-bg);
         display: flex;
         flex-direction: column;
         gap: 0.35rem;
@@ -768,13 +784,13 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         display: flex;
         justify-content: space-between;
         font-size: 0.82rem;
-        color: #475569;
+        color: var(--pos-text-muted);
     }
 
     .pos-summary-row.total {
         font-size: 1rem;
         font-weight: 800;
-        color: #0f172a;
+        color: var(--pos-primary);
         margin-top: 0.3rem;
         padding-top: 0.3rem;
         border-top: 1px solid var(--pos-border);
@@ -782,8 +798,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
     .btn-quick-pay {
         width: 100%;
-        background: #0f172a;
-        color: #ffffff;
+        background: var(--pos-primary);
+        color: var(--pos-card-bg);
         border: none;
         border-radius: 6px;
         padding: 0.85rem 1rem;
@@ -798,7 +814,8 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .btn-quick-pay:hover {
-        background: #1e293b;
+        background: var(--pos-primary);
+        opacity: 0.95;
     }
 
     /* Modal dialogs */
@@ -820,7 +837,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
     }
 
     .pos-modal {
-        background: #ffffff;
+        background: var(--pos-card-bg);
         border-radius: 8px;
         width: 360px;
         max-width: 90%;

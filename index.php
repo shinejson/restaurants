@@ -225,8 +225,29 @@ include 'includes/header.php';
         </form>
     </div>
 
+    <!-- Category Tabs -->
+    <div class="category-tabs" id="categoryTabs">
+        <a href="index.php<?php echo $search ? '?search=' . urlencode($search) : ''; ?>"
+            data-category=""
+            class="category-tab <?php echo empty($category) ? 'active' : ''; ?>">
+            <i class="fas fa-border-all"></i> All Items
+        </a>
+        <?php foreach ($categories as $cat): ?>
+            <a href="index.php?category=<?php echo urlencode($cat); ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>"
+                data-category="<?php echo htmlspecialchars($cat); ?>"
+                class="category-tab <?php echo ($cat == $category) ? 'active' : ''; ?>">
+                <i class="fas fa-utensils"></i> <?php echo htmlspecialchars($cat); ?>
+            </a>
+        <?php endforeach; ?>
+    </div>
+
+    <div id="menuItemsWrapper">
     <?php if (empty($items)): ?>
-        <p style="text-align: center;">No items found.</p>
+        <div class="empty-state-card">
+            <i class="fas fa-search"></i>
+            <h3>No items found</h3>
+            <p>Try a different search or choose another category above.</p>
+        </div>
     <?php else: ?>
         <div class="menu-grid">
             <?php foreach ($items as $item): ?>
@@ -235,6 +256,7 @@ include 'includes/header.php';
                         <?php $image = !empty($item['image_url']) ? htmlspecialchars($item['image_url']) : BASE_URL . '/assets/images/food-placeholder.jpg'; ?>
                         <img src="<?php echo $image; ?>" alt="<?php echo htmlspecialchars($item['item_name']); ?>"
                             class="food-img">
+                        <span class="food-badge"><?php echo htmlspecialchars($item['main_category']); ?></span>
                     </div>
                     <div class="food-content">
                         <h5 class="food-title"><?php echo htmlspecialchars($item['item_name']); ?></h5>
@@ -246,10 +268,8 @@ include 'includes/header.php';
                         </p>
                         <div class="food-price">
                             <?php if (!empty($item['promo_price'])): ?>
-                                <span class="original-price"
-                                    style="text-decoration: line-through; color: var(--text-muted); font-size: 0.9rem; margin-right: 0.5rem;"><?php echo format_currency($item['price']); ?></span>
-                                <span class="promo-price"
-                                    style="color: var(--primary-color); font-weight: 800;"><?php echo format_currency($item['promo_price']); ?></span>
+                                <span class="original-price"><?php echo format_currency($item['price']); ?></span>
+                                <span class="promo-price"><?php echo format_currency($item['promo_price']); ?></span>
                             <?php else: ?>
                                 <?php echo format_currency($item['price']); ?>
                             <?php endif; ?>
@@ -265,6 +285,7 @@ include 'includes/header.php';
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
+    </div>
 
     <div class="section-footer">
         <a href="menu.php" class="btn btn-outline">View Full Menu</a>
@@ -330,5 +351,141 @@ include 'includes/header.php';
         </div>
     </div>
 </section>
+
+<script>
+    // AJAX filtering for category tabs & search (prevents page jump to top on filter)
+    document.addEventListener('DOMContentLoaded', function () {
+        const tabsContainer = document.getElementById('categoryTabs');
+        const wrapper = document.getElementById('menuItemsWrapper');
+        const searchForm = document.getElementById('filterForm');
+        const categorySelect = document.getElementById('category');
+        const searchInput = document.getElementById('search');
+
+        if (!tabsContainer || !wrapper) return;
+
+        wrapper.style.transition = 'opacity .2s ease';
+
+        function escapeHtml(str) {
+            const amp = String.fromCharCode(38);
+            return String(str == null ? '' : str)
+                .replace(/&/g, amp)
+                .replace(/</g, amp + 'lt;')
+                .replace(/>/g, amp + 'gt;')
+                .replace(/"/g, amp + 'quot;')
+                .replace(/'/g, amp + '#039;');
+        }
+
+        function buildUrl(category, search) {
+            const params = new URLSearchParams();
+            if (search) params.set('search', search);
+            if (category) params.set('category', category);
+            const qs = params.toString();
+            return 'index.php' + (qs ? '?' + qs : '');
+        }
+
+        function renderItems(items) {
+            if (!items.length) {
+                wrapper.innerHTML = `
+                    <div class="empty-state-card">
+                        <i class="fas fa-search"></i>
+                        <h3>No items found</h3>
+                        <p>Try a different search or choose another category above.</p>
+                    </div>`;
+                return;
+            }
+
+            const placeholder = BASE_URL + '/assets/images/food-placeholder.jpg';
+
+            const cards = items.map(function (item) {
+                const image = item.image_url ? item.image_url : placeholder;
+                const desc = item.description
+                    ? (item.description.length > 50 ? escapeHtml(item.description.substring(0, 50)) + '...' : escapeHtml(item.description))
+                    : '';
+                const price = item.promo_formatted
+                    ? `<span class="original-price">${escapeHtml(item.price_formatted)}</span><span class="promo-price">${escapeHtml(item.promo_formatted)}</span>`
+                    : escapeHtml(item.price_formatted);
+
+                return `
+                <div class="food-card">
+                    <div class="food-img-container">
+                        <img src="${escapeHtml(image)}" alt="${escapeHtml(item.item_name)}" class="food-img">
+                        <span class="food-badge">${escapeHtml(item.main_category)}</span>
+                    </div>
+                    <div class="food-content">
+                        <h5 class="food-title">${escapeHtml(item.item_name)}</h5>
+                        <p class="food-description">${desc}</p>
+                        <div class="food-price">${price}</div>
+                        <button class="add-to-cart-btn" data-id="${escapeHtml(item.id)}"
+                            data-name="${escapeHtml(item.item_name)}"
+                            data-price="${escapeHtml(item.promo_price ? item.promo_price : item.price)}"
+                            data-image="${escapeHtml(image)}">
+                            <i class="fas fa-cart-plus"></i>
+                        </button>
+                    </div>
+                </div>`;
+            });
+
+            wrapper.innerHTML = `<div class="menu-grid">${cards.join('')}</div>`;
+        }
+
+        function setActiveTab(category) {
+            tabsContainer.querySelectorAll('.category-tab').forEach(function (tab) {
+                tab.classList.toggle('active', (tab.dataset.category || '') === category);
+            });
+        }
+
+        function loadItems(category, search, pushUrl) {
+            const apiUrl = BASE_URL + '/ajax/get_items.php?category=' + encodeURIComponent(category) +
+                '&search=' + encodeURIComponent(search);
+
+            wrapper.style.opacity = '0.5';
+
+            fetch(apiUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        renderItems(data.items);
+                        setActiveTab(category);
+                        if (categorySelect) categorySelect.value = category;
+                        // Update the URL without reloading/scrolling
+                        if (pushUrl) history.pushState({ category: category, search: search }, '', buildUrl(category, search));
+                    }
+                })
+                .catch(function () {
+                    // Fallback to normal page load if AJAX fails
+                    window.location.href = buildUrl(category, search);
+                })
+                .finally(function () {
+                    wrapper.style.opacity = '1';
+                });
+        }
+
+        // Tab clicks -> filter in place, no page reload
+        tabsContainer.querySelectorAll('.category-tab').forEach(function (tab) {
+            tab.addEventListener('click', function (e) {
+                e.preventDefault();
+                loadItems(this.dataset.category || '', searchInput ? searchInput.value.trim() : '', true);
+            });
+        });
+
+        // Search submit also filters in place (keeps scroll position)
+        if (searchForm) {
+            searchForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                loadItems(categorySelect ? categorySelect.value : '', searchInput ? searchInput.value.trim() : '', true);
+            });
+        }
+
+        // Browser back/forward support
+        window.addEventListener('popstate', function () {
+            const params = new URLSearchParams(window.location.search);
+            const category = params.get('category') || '';
+            const search = params.get('search') || '';
+            if (searchInput) searchInput.value = search;
+            if (categorySelect) categorySelect.value = category;
+            loadItems(category, search, false);
+        });
+    });
+</script>
 
 <?php include 'includes/footer.php'; ?>
