@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = clean_input($_POST['status']);
     $redirect_to = isset($_POST['redirect_to']) ? $_POST['redirect_to'] : 'index.php';
 
-    $allowed_status = ['Placed', 'Preparing', 'On the Way', 'Delivered', 'Cancelled'];
+    $allowed_status = ['Draft', 'Placed', 'Preparing', 'On the Way', 'Delivered', 'Cancelled'];
     if (in_array($status, $allowed_status)) {
         try {
             $stmt = $conn->prepare("UPDATE orders SET status = ? WHERE id = ?");

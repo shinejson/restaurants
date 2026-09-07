@@ -189,6 +189,7 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
             <input type="hidden" name="redirect_to" value="view.php?id=<?php echo $id; ?>">
             <select name="status"
                 style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--white); color: var(--text-main); font-weight: 600;">
+                <option value="Draft" <?php echo $order['status'] == 'Draft' ? 'selected' : ''; ?>>Draft</option>
                 <option value="Placed" <?php echo $order['status'] == 'Placed' ? 'selected' : ''; ?>>Placed</option>
                 <option value="Preparing" <?php echo $order['status'] == 'Preparing' ? 'selected' : ''; ?>>Preparing
                 </option>

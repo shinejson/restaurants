@@ -124,26 +124,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && hash
 
         $order_reference = 'POS-' . strtoupper(uniqid());
 
+        // Toolbar action: 'settle' (Settle / Quick Pay) or 'save_draft' (Save button)
+        $form_action = (isset($_POST['form_action']) && $_POST['form_action'] === 'save_draft') ? 'save_draft' : 'settle';
+        $order_status = $form_action === 'save_draft' ? 'Draft' : 'Placed';
+
+        // Apply Extra Charge & Discount from the POS toolbar to the final total
+        $extra_charge = max(0, (float) ($_POST['extra_charge'] ?? 0));
+        $discount_percent = min(100, max(0, (float) ($_POST['discount_percent'] ?? 0)));
+        $discount_amount = round($order_total * ($discount_percent / 100), 2);
+        $order_total = max(0, round($order_total + $extra_charge - $discount_amount, 2));
+
         $order_fields = [
             'user_id', 'order_reference', 'total', 'status', 'delivery_charge', 'delivery_zone_id', 'company_id', 'created_at'
         ];
         $order_values = [
-            $customer_id, $order_reference, $order_total, 'Placed', 0, null, null, date('Y-m-d H:i:s')
+            $customer_id, $order_reference, $order_total, $order_status, 0, null, null, date('Y-m-d H:i:s')
         ];
 
-        $extra_columns = ['order_type', 'table_number', 'room_number', 'guest_count'];
-        foreach ($extra_columns as $extra_column) {
-            if (in_array($extra_column, $conn->query("SHOW COLUMNS FROM orders")->fetchAll(PDO::FETCH_COLUMN), true)) {
+        $order_columns = $conn->query("SHOW COLUMNS FROM orders")->fetchAll(PDO::FETCH_COLUMN);
+        $extra_columns = [
+            'order_type' => $order_type,
+            'table_number' => $table_number,
+            'room_number' => $room_number,
+            'guest_count' => $guest_count,
+            'extra_charge' => $extra_charge,
+            'discount_percent' => $discount_percent,
+        ];
+        foreach ($extra_columns as $extra_column => $extra_value) {
+            if (in_array($extra_column, $order_columns, true)) {
                 $order_fields[] = $extra_column;
-                if ($extra_column === 'order_type') {
-                    $order_values[] = $order_type;
-                } elseif ($extra_column === 'table_number') {
-                    $order_values[] = $table_number;
-                } elseif ($extra_column === 'room_number') {
-                    $order_values[] = $room_number;
-                } else {
-                    $order_values[] = $guest_count;
-                }
+                $order_values[] = $extra_value;
             }
         }
 
@@ -857,6 +867,47 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
         gap: 0.5rem;
         margin-top: 1rem;
     }
+    /* ===== Receipt printing (Print button) ===== */
+    #posReceipt { display: none; }
+
+    @media print {
+        /* Hide the entire POS screen, show only the receipt ticket */
+        body * {
+            visibility: hidden !important;
+        }
+
+        #posReceipt,
+        #posReceipt * {
+            visibility: visible !important;
+        }
+
+        #posReceipt {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            max-width: 400px;
+            margin: 0;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            color: #000;
+            background: #fff;
+        }
+
+        /* Collapse the tall POS layout so no blank pages are emitted */
+        .pos-header-bar,
+        .pos-layout,
+        .pos-modal-overlay {
+            display: none !important;
+        }
+
+        html,
+        body {
+            height: auto !important;
+            background: #fff !important;
+        }
+    }
 </style>
 
 <!-- Top Navigation Header -->
@@ -883,8 +934,9 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
 
 <form method="POST" id="posOrderForm">
     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-    <input type="hidden" id="extraChargeAmount" value="0">
-    <input type="hidden" id="discountPercent" value="0">
+    <input type="hidden" name="extra_charge" id="extraChargeAmount" value="0">
+    <input type="hidden" name="discount_percent" id="discountPercent" value="0">
+    <input type="hidden" name="form_action" id="formAction" value="settle">
 
     <div class="pos-layout">
         <!-- Main Panel (Menu & Controls) -->
@@ -1146,6 +1198,20 @@ include dirname(dirname(__FILE__)) . '/includes/admin_header.php';
             <button type="button" class="pos-btn" onclick="closeModal()">Cancel</button>
             <button type="button" class="pos-btn" style="background:#0f172a; color:#fff;" id="modalSubmitBtn">Apply</button>
         </div>
+    </div>
+</div>
+
+<!-- Hidden Receipt Preview (populated by the Print button) -->
+<div id="posReceipt" aria-hidden="true">
+    <div style="text-align:center;">
+        <h2 style="margin:0;">AIRPORT WEST HOTEL</h2>
+        <p style="margin:2px 0;">ORDER TICKET (PREVIEW)</p>
+    </div>
+    <div id="posReceiptMeta" style="border-top:1px dashed #ccc; border-bottom:1px dashed #ccc; padding:6px 0; margin:8px 0; font-size:0.85rem;"></div>
+    <table id="posReceiptItems" style="width:100%; border-collapse:collapse;"></table>
+    <div id="posReceiptTotals" style="border-top:1px dashed #ccc; padding:6px 0; margin:8px 0;"></div>
+    <div style="text-align:center; font-size:0.8rem;">
+        <p style="margin:4px 0;">** Preview only — not a paid receipt **</p>
     </div>
 </div>
 
@@ -1455,22 +1521,129 @@ document.getElementById('btnDiscount').addEventListener('click', () => {
 });
 
 document.getElementById('btnNoCharge').addEventListener('click', () => {
-    document.getElementById('discountPercent').value = 100;
+    const discInput = document.getElementById('discountPercent');
+    // Toggle: apply a full 100% comp, or clear it if the order is already fully comped
+    discInput.value = parseFloat(discInput.value || 0) >= 100 ? 0 : 100;
     updateCartUI();
 });
 
 document.getElementById('btnCancelOrder').addEventListener('click', () => {
     if (confirm('Are you sure you want to cancel and clear the current cart?')) {
         document.querySelectorAll('.pos-qty-input').forEach(input => input.value = 0);
+        document.querySelectorAll('.pos-request-price').forEach(input => input.value = 0);
+        document.querySelectorAll('[id^="inputRecipient_"]').forEach(input => input.value = '');
+        document.querySelectorAll('[id^="inputSpecial_"]').forEach(input => input.value = '');
         document.getElementById('extraChargeAmount').value = 0;
         document.getElementById('discountPercent').value = 0;
+        closeModal();
         updateCartUI();
     }
 });
 
+// Print — renders a live order ticket from the cart and prints only that ticket
 document.getElementById('btnPrintPreview').addEventListener('click', () => {
+    if (!cartHasItems()) {
+        alert('Cart is empty. Add at least one item before printing.');
+        return;
+    }
+    buildReceiptPreview();
     window.print();
 });
+
+// Save — stores the order as a Draft so it can be continued later from the Orders list
+document.getElementById('btnSaveDraft').addEventListener('click', () => {
+    if (!cartHasItems()) {
+        alert('Cart is empty. Add at least one item before saving.');
+        return;
+    }
+    if (!confirm('Save this order as a Draft? You can continue it later from the Orders list.')) return;
+    document.getElementById('formAction').value = 'save_draft';
+    document.getElementById('posOrderForm').submit();
+});
+
+// Guard Settle / Quick Pay submits against an empty cart; default the action to settle
+document.getElementById('posOrderForm').addEventListener('submit', (e) => {
+    if (!cartHasItems()) {
+        e.preventDefault();
+        alert('Cart is empty. Please add at least one item to the order.');
+        return;
+    }
+    document.getElementById('formAction').value = 'settle';
+});
+
+function cartHasItems() {
+    let count = 0;
+    document.querySelectorAll('.pos-qty-input').forEach(input => {
+        count += parseInt(input.value || 0, 10);
+    });
+    return count > 0;
+}
+
+function escHtml(str) {
+    return String(str === null || str === undefined ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// Builds the printable order ticket from the live cart state
+function buildReceiptPreview() {
+    let subtotal = 0;
+    const rows = [];
+
+    document.querySelectorAll('.pos-qty-input').forEach(input => {
+        const qty = parseInt(input.value || 0, 10);
+        if (qty <= 0) return;
+        const itemId = input.id.replace('inputQty_', '');
+        const price = parseFloat(input.dataset.price || 0);
+        const reqInput = document.getElementById('inputRequestPrice_' + itemId);
+        const reqPrice = parseFloat(reqInput ? reqInput.value || 0 : 0);
+        const lineTotal = (price + reqPrice) * qty;
+        subtotal += lineTotal;
+        rows.push(
+            '<tr>' +
+                '<td style="padding:3px 0;">' + escHtml(input.dataset.itemName || 'Item') + '</td>' +
+                '<td style="padding:3px 0; text-align:center;">' + qty + '</td>' +
+                '<td style="padding:3px 0; text-align:right;">GH\u20B5' + formatMoney(lineTotal) + '</td>' +
+            '</tr>'
+        );
+    });
+
+    const extraVal = parseFloat(document.getElementById('extraChargeAmount').value || 0);
+    const discPct = parseFloat(document.getElementById('discountPercent').value || 0);
+    const discountVal = subtotal * (discPct / 100);
+    const grandTotal = Math.max(0, subtotal + extraVal - discountVal);
+
+    const orderType = document.querySelector('select[name="order_type"]');
+    const tableNo = document.getElementById('tableNumberInput') ? document.getElementById('tableNumberInput').value : '';
+    const roomNo = document.querySelector('input[name="room_number"]');
+    const guestName = document.querySelector('input[name="customer_name"]');
+
+    document.getElementById('posReceiptMeta').innerHTML =
+        '<div style="display:flex; justify-content:space-between;"><span>DATE:</span><span>' + new Date().toLocaleString() + '</span></div>' +
+        '<div style="display:flex; justify-content:space-between;"><span>TYPE:</span><span>' +
+            (orderType ? escHtml(orderType.options[orderType.selectedIndex].text) : 'Dine-In') +
+            (tableNo ? ' / Table ' + escHtml(tableNo) : '') +
+            (roomNo && roomNo.value ? ' / Room ' + escHtml(roomNo.value) : '') +
+        '</span></div>' +
+        '<div style="display:flex; justify-content:space-between;"><span>GUEST:</span><span>' +
+            (guestName && guestName.value ? escHtml(guestName.value) : 'Walk-in Guest') +
+        '</span></div>';
+
+    document.getElementById('posReceiptItems').innerHTML =
+        '<thead><tr style="font-weight:bold;">' +
+            '<td style="width:55%;">ITEM</td>' +
+            '<td style="width:15%; text-align:center;">QTY</td>' +
+            '<td style="width:30%; text-align:right;">AMOUNT</td>' +
+        '</tr></thead><tbody>' + rows.join('') + '</tbody>';
+
+    document.getElementById('posReceiptTotals').innerHTML =
+        '<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>Subtotal:</span><span>GH\u20B5' + formatMoney(subtotal) + '</span></div>' +
+        (extraVal > 0 ? '<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>Extra Charge:</span><span>GH\u20B5' + formatMoney(extraVal) + '</span></div>' : '') +
+        (discountVal > 0 ? '<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>Discount (' + formatMoney(discPct) + '%):</span><span>-GH\u20B5' + formatMoney(discountVal) + '</span></div>' : '') +
+        '<div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-top:5px;"><span>TOTAL:</span><span>GH\u20B5' + formatMoney(grandTotal) + '</span></div>';
+}
 
 // Initialize UI
 updateCartUI();

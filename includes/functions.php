@@ -264,11 +264,23 @@ function ensure_order_schema($conn = null)
                 'order_type' => 'VARCHAR(20) NOT NULL DEFAULT "dine_in"',
                 'table_number' => 'VARCHAR(50) NULL',
                 'room_number' => 'VARCHAR(50) NULL',
-                'guest_count' => 'INT NOT NULL DEFAULT 1'
+                'guest_count' => 'INT NOT NULL DEFAULT 1',
+                'extra_charge' => 'DECIMAL(10,2) NOT NULL DEFAULT 0',
+                'discount_percent' => 'DECIMAL(5,2) NOT NULL DEFAULT 0'
             ];
             foreach ($required_columns as $column => $definition) {
                 if (!in_array($column, $columns, true)) {
                     $conn->exec("ALTER TABLE orders ADD COLUMN `$column` $definition");
+                }
+            }
+
+            // Widen the status ENUM so every status used by the app is storable
+            // (Draft from POS "Save", Settled/Voided from the orders list bulk actions, etc.)
+            if (in_array('status', $columns, true)) {
+                $status_col = $conn->query("SHOW COLUMNS FROM orders LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
+                $target_enum = "'Draft','Placed','Preparing','On the Way','Pending','Running','Settled','Completed','Delivered','Cancelled','Voided'";
+                if ($status_col && stripos($status_col['Type'], 'enum') !== false && stripos($status_col['Type'], "'Draft'") === false) {
+                    $conn->exec("ALTER TABLE orders MODIFY COLUMN `status` ENUM($target_enum) NOT NULL DEFAULT 'Placed'");
                 }
             }
         }
