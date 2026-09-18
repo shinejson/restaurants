@@ -7,6 +7,9 @@ require_once '../../includes/permissions.php';
 // Check permission
 require_permission('manage_admins');
 
+// Roles come from the RBAC tables so custom roles can be assigned here too.
+$available_roles = rbac_roles();
+
 $admin_title = 'Edit Admin';
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -45,7 +48,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['password'];
         $confirm_password = $_POST['confirm_password'];
 
-        if (strlen($username) < 3) {
+        if (!isset($available_roles[$role])) {
+            $_SESSION['admin_edit_error'] = "Please choose a valid role.";
+            header("Location: edit.php?id=$id");
+            exit;
+        } elseif ($admin['role'] === 'admin' && $role !== 'admin' && rbac_super_admin_count() <= 1) {
+            $_SESSION['admin_edit_error'] = "This is the last Super Admin account. Promote another admin to Super Admin before changing its role.";
+            header("Location: edit.php?id=$id");
+            exit;
+        } elseif (strlen($username) < 3) {
             $_SESSION['admin_edit_error'] = "Username too short.";
             header("Location: edit.php?id=$id");
             exit;
@@ -109,7 +120,7 @@ include '../includes/admin_header.php';
         </h1>
         <p>Modify administrative user details and permissions.</p>
     </div>
-    <a href="index.php" class="btn-primary" style="background: var(--text-muted); color: white; box-shadow: none;">
+    <a href="index.php?tab=users" class="btn-primary" style="background: var(--text-muted); color: white; box-shadow: none;">
         <i class="fas fa-arrow-left"></i> Back to List
     </a>
 </div>
@@ -167,13 +178,23 @@ include '../includes/admin_header.php';
         <div class="form-group">
             <label>Privilege / Access Level</label>
             <select name="role" class="form-control" required>
-                <option value="staff" <?php echo $admin['role'] === 'staff' ? 'selected' : ''; ?>>Staff (Limited Access)
-                </option>
-                <option value="manager" <?php echo $admin['role'] === 'manager' ? 'selected' : ''; ?>>Manager
-                    (Intermediate Access)</option>
-                <option value="admin" <?php echo $admin['role'] === 'admin' ? 'selected' : ''; ?>>Super Admin (Full
-                    Access)</option>
+                <?php foreach ($available_roles as $role_slug => $role_option): ?>
+                    <option value="<?php echo htmlspecialchars($role_slug); ?>"
+                        <?php echo $admin['role'] === $role_slug ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($role_option['name']); ?>
+                        <?php echo !empty($role_option['legacy']) ? ' (legacy role)' : (!empty($role_option['is_system']) ? '' : ' (custom role)'); ?>
+                    </option>
+                <?php endforeach; ?>
+                <?php if ($admin['role'] !== '' && !isset($available_roles[$admin['role']])): ?>
+                    <option value="<?php echo htmlspecialchars($admin['role']); ?>" selected>
+                        <?php echo htmlspecialchars($admin['role']); ?> (current, undefined)
+                    </option>
+                <?php endif; ?>
             </select>
+            <small style="display:block; margin-top:0.4rem; color: var(--text-muted);">
+                Role permissions are managed under
+                <a href="index.php?tab=roles">Manage Admins &rsaquo; User Roles</a>.
+            </small>
         </div>
 
         <hr style="margin: 2rem 0; border: 0; border-top: 1px solid var(--border-color);">

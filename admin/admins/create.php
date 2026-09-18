@@ -7,6 +7,9 @@ require_once '../../includes/permissions.php';
 // Check permission
 require_permission('manage_admins');
 
+// Roles come from the RBAC tables so custom roles can be assigned here too.
+$available_roles = rbac_roles();
+
 $admin_title = 'Add New Admin';
 
 $error = '';
@@ -35,7 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $role = clean_input($_POST['role'] ?? 'staff');
 
-        if (strlen($username) < 3) {
+        if (!isset($available_roles[$role])) {
+            $_SESSION['admin_error'] = "Please choose a valid role.";
+        } elseif (strlen($username) < 3) {
             $_SESSION['admin_error'] = "Username too short.";
         } elseif (strlen($password) < 6) {
             $_SESSION['admin_error'] = "Password too short.";
@@ -76,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h1>Add New Admin</h1>
         <p>Create a new administrative user.</p>
     </div>
-    <a href="index.php" class="btn-secondary"><i class="fas fa-arrow-left"></i> Back to List</a>
+    <a href="index.php?tab=users" class="btn-secondary"><i class="fas fa-arrow-left"></i> Back to List</a>
 </div>
 
 <div class="card" style="max-width: 600px; margin: 0 auto;">
@@ -98,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($success): ?>
         <div id="successAlert" class="alert alert-success" style="transition: opacity 0.5s ease-out;">
             <?php echo htmlspecialchars($success); ?>
-            <p><a href="index.php">Return to Admin List</a></p>
+            <p><a href="index.php?tab=users">Return to Admin List</a></p>
         </div>
         <script>
             setTimeout(function () {
@@ -136,10 +141,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group">
                 <label>Privilege / Access Level</label>
                 <select name="role" class="form-control" required>
-                    <option value="staff">Staff (Limited Access)</option>
-                    <option value="manager">Manager (Intermediate Access)</option>
-                    <option value="admin">Super Admin (Full Access)</option>
+                    <?php foreach ($available_roles as $role_slug => $role_option): ?>
+                        <option value="<?php echo htmlspecialchars($role_slug); ?>" <?php echo $role_slug === 'staff' ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($role_option['name']); ?>
+                            <?php echo !empty($role_option['is_system']) ? '' : ' (custom role)'; ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
+                <small style="display:block; margin-top:0.4rem; color: var(--text-muted);">
+                    What each role can do is configured under
+                    <a href="index.php?tab=roles">Manage Admins &rsaquo; User Roles</a>.
+                </small>
             </div>
 
             <button type="submit" class="btn-primary">Create Admin</button>

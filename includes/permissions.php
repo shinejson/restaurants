@@ -1,66 +1,43 @@
 <?php
 /**
- * Role-Based Access Control (RBAC) Helper Functions
- * Manages permissions for staff, manager, and admin roles
+ * Role-Based Access Control (RBAC) — API
+ * ------------------------------------------------------------------
+ * The permission catalogue, the shipped defaults and the storage layer
+ * now live in includes/rbac.php. Roles and any customised permissions
+ * are managed from Admin > Admins > User Roles.
+ *
+ * The Super Admin role (`admin`) always has full access so the panel
+ * can never be locked out.
  */
 
-// Define permission mapping: feature => allowed roles
-$RBAC_PERMISSIONS = [
-    // Dashboard
-    'view_dashboard' => ['staff', 'manager', 'admin'],
-
-    // Orders
-    'manage_orders' => ['staff', 'manager', 'admin'],
-    'view_orders' => ['staff', 'manager', 'admin'],
-
-    // Menu & Categories
-    'manage_menu' => ['manager', 'admin'],
-    'manage_categories' => ['manager', 'admin'],
-
-    // Events
-    'manage_events' => ['manager', 'admin'],
-
-    // Customer Management
-    'manage_customers' => ['manager', 'admin'],
-    'view_customers' => ['manager', 'admin'],
-
-    // Admin Management
-    'manage_admins' => ['admin'],
-    'view_admins' => ['admin'],
-
-    // Reports
-    'view_reports' => ['manager', 'admin'],
-
-    // Settings
-    'manage_settings' => ['admin'],
-
-    // Data Import
-    'import_data' => ['admin'],
-];
+require_once __DIR__ . '/rbac.php';
 
 /**
- * Check if current user has permission for a feature
+ * Shipped default matrix, kept for backwards compatibility:
+ * feature => [roles that get access out of the box].
+ */
+$RBAC_PERMISSIONS = rbac_default_permissions();
+
+/**
+ * Check if the current user has permission for a feature.
+ *
  * @param string $feature The feature to check
- * @return bool True if user has permission
+ * @return bool True when the role may use the feature
  */
 function has_permission($feature)
 {
-    global $RBAC_PERMISSIONS;
-
-    // Check if user is logged in as admin
     if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_role'])) {
         return false;
     }
 
-    $user_role = $_SESSION['admin_role'];
+    $feature = (string) $feature;
 
-    // Check if feature exists in permissions
-    if (!isset($RBAC_PERMISSIONS[$feature])) {
-        return false; // Feature not defined, deny by default
+    // Unknown feature: deny by default.
+    if (rbac_feature($feature) === null) {
+        return false;
     }
 
-    // Check if user's role is in allowed roles for this feature
-    return in_array($user_role, $RBAC_PERMISSIONS[$feature]);
+    return rbac_role_can((string) $_SESSION['admin_role'], $feature);
 }
 
 /**
@@ -85,46 +62,64 @@ function is_super_admin()
 }
 
 /**
+ * Only Super Admins may re-shape what every other role can do.
+ * @return bool
+ */
+function can_manage_roles()
+{
+    return is_super_admin();
+}
+
+/**
  * Check if current user is manager or above
  * @return bool
  */
 function is_manager_or_above()
 {
-    return isset($_SESSION['admin_role']) &&
-        in_array($_SESSION['admin_role'], ['manager', 'admin']);
+    if (!isset($_SESSION['admin_role'])) {
+        return false;
+    }
+
+    $role = (string) $_SESSION['admin_role'];
+    if ($role === 'admin' || $role === 'manager') {
+        return true;
+    }
+
+    // Custom roles count as "manager level" once they can run the shop.
+    return rbac_role_can($role, 'manage_orders') && rbac_role_can($role, 'manage_menu');
 }
 
 /**
- * Check if current user is at least staff level
+ * Legacy helper: true for any role that can reach the admin panel.
  * @return bool
  */
 function is_staff_or_above()
 {
-    return isset($_SESSION['admin_role']) &&
-        in_array($_SESSION['admin_role'], ['staff', 'manager', 'admin']);
+    if (!isset($_SESSION['admin_role'])) {
+        return false;
+    }
+
+    $role = (string) $_SESSION['admin_role'];
+    if (in_array($role, ['staff', 'manager', 'admin'], true)) {
+        return true;
+    }
+
+    return rbac_role_can($role, 'view_dashboard') || rbac_role_can($role, 'manage_orders');
 }
 
 /**
- * Get user's role display name
+ * Get a role's display name (defaults to the signed-in user's role).
+ * @param string|null $role
  * @return string
  */
-function get_role_name()
+function get_role_name($role = null)
 {
-    if (!isset($_SESSION['admin_role'])) {
-        return 'Guest';
+    if ($role === null) {
+        if (!isset($_SESSION['admin_role'])) {
+            return 'Guest';
+        }
+        $role = $_SESSION['admin_role'];
     }
 
-    $role = $_SESSION['admin_role'];
-
-    switch ($role) {
-        case 'admin':
-            return 'Super Admin';
-        case 'manager':
-            return 'Manager';
-        case 'staff':
-            return 'Staff';
-        default:
-            return ucfirst($role);
-    }
+    return rbac_role_name($role);
 }
-?>
