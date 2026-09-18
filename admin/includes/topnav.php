@@ -110,9 +110,11 @@ if (isset($_SESSION['admin_id'])) {
                         </div>
                         <div class="info-group">
                             <label>System Role</label>
-                            <p><span
-                                    class="badge-role"><?php echo htmlspecialchars(ucfirst($admin_details['role'])); ?></span>
-                            </p>
+                            <p><span class="badge-role"><?php
+                                echo htmlspecialchars(function_exists('get_role_name')
+                                    ? get_role_name($admin_details['role'])
+                                    : ucfirst($admin_details['role']));
+                            ?></span></p>
                         </div>
                         <div class="info-group">
                             <label>Account Created</label>

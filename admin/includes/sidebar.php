@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../includes/permissions.php';
 $current_page = basename($_SERVER['PHP_SELF']);
 $script_path  = $_SERVER['PHP_SELF'];
 $dash_view    = isset($_GET['view']) ? $_GET['view'] : 'overview';
+$admins_tab   = isset($_GET['tab']) ? $_GET['tab'] : '';
 
 $in_orders    = strpos($script_path, '/orders/')    !== false;
 $in_events    = strpos($script_path, '/events/')    !== false;
@@ -195,9 +196,14 @@ $can_see_settings_group = has_permission('manage_customers') || has_permission('
                     </li>
                 <?php endif; ?>
                 <?php if (has_permission('manage_admins')): ?>
-                    <li class="<?php echo $in_admins ? 'active' : ''; ?>">
-                        <a href="<?php echo BASE_URL; ?>/admin/admins/index.php">
+                    <li class="<?php echo ($in_admins && $admins_tab !== 'roles') ? 'active' : ''; ?>">
+                        <a href="<?php echo BASE_URL; ?>/admin/admins/index.php?tab=users">
                             <i class="fas fa-users-cog"></i><span class="menu-text">Manage Admins</span>
+                        </a>
+                    </li>
+                    <li class="<?php echo ($in_admins && $admins_tab === 'roles') ? 'active' : ''; ?>">
+                        <a href="<?php echo BASE_URL; ?>/admin/admins/index.php?tab=roles">
+                            <i class="fas fa-user-tag"></i><span class="menu-text">User Roles</span>
                         </a>
                     </li>
                 <?php endif; ?>
