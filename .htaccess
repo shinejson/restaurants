@@ -1,0 +1,31 @@
+# RestaurantOS — Apache front controller.
+#
+# The dev server (tools/dev-server.mjs) applies the equivalent rules in
+# tools/php-runtime.mjs, so this file matters for real deployments only.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Public JSON API consumed by the superadmin console and integrations.
+    RewriteRule ^api/(.*)$ platform/api/index.php [QSA,L]
+
+    # Pretty URLs for the storefront.
+    RewriteRule ^(index|menu|about|contact|events|event_booking|cart|checkout|orders)/?$ $1.php [QSA,L]
+
+    # Sub-directory installs (e.g. https://host/restaurants/…) keep working:
+    # BASE_URL is derived from the script path, so no extra rule is needed.
+</IfModule>
+
+# Never serve private state through the web root.
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(sqlite|sqlite3|db|env|log)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+<Files "composer.json">
+    Require all denied
+</Files>
+
+# storage/ holds tenant databases, sessions and uploads.
+RedirectMatch 404 ^/storage/

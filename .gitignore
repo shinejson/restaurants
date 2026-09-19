@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+superadmin/node_modules/
+
+# Built assets (Vite output for the superadmin console)
+superadmin/dist/
+
+# Local environment — copy config/.env.example and customise
+config/.env
+config/.env.local
+
+# Runtime state: SQLite control plane + tenant databases, sessions, logs, cache
+storage/*.sqlite
+storage/*.sqlite-*
+storage/tenants/*
+storage/sessions/*
+storage/logs/*
+storage/cache/*
+storage/uploads/*
+!storage/tenants/.gitkeep
+!storage/sessions/.gitkeep
+!storage/logs/.gitkeep
+!storage/cache/.gitkeep
+!storage/uploads/.gitkeep
+
+# Scratch
+.probe/
+*.log
