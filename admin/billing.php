@@ -16,6 +16,7 @@ use Resto\Tenancy\FeatureGate;
 require_once '../includes/admin_check.php';
 require_once '../config/db.php';
 require_once '../includes/functions.php';
+require_once '../includes/permissions.php';
 
 $admin_title = 'Plan & Billing';
 
