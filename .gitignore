@@ -25,4 +25,5 @@ storage/uploads/*
 
 # Scratch
 .probe/
+superadmin/tools/.smoke.mjs
 *.log

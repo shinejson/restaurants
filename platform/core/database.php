@@ -304,9 +304,11 @@ class Statement extends PDOStatement
             return array_map(static fn ($row) => $row[$column] ?? null, $rows);
         }
         if ($mode === PDO::FETCH_KEY_PAIR) {
+            // Rows arrive in FETCH_BOTH shape, so narrow to named columns first —
+            // array_values() on the interleaved row would pair the wrong cells.
             $out = [];
             foreach ($rows as $row) {
-                $values = array_values($row);
+                $values = array_values($this->shape($row, PDO::FETCH_ASSOC));
                 $out[$values[0] ?? null] = $values[1] ?? null;
             }
             return $out;
