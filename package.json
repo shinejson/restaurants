@@ -1,0 +1,24 @@
+{
+  "name": "restaurantos-saas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RestaurantOS — multi-tenant restaurant SaaS. PHP control plane + React superadmin console.",
+  "type": "module",
+  "scripts": {
+    "setup": "node tools/setup.mjs",
+    "dev": "node tools/dev-server.mjs",
+    "php": "node tools/php-cli.mjs",
+    "lint": "node tools/php-cli.mjs tools/lint.php",
+    "status": "node tools/php-cli.mjs tools/status.php",
+    "test": "node tools/php-cli.mjs tests/run.php",
+    "build:superadmin": "npm --prefix superadmin run build",
+    "dev:superadmin": "npm --prefix superadmin run dev",
+    "smoke:console": "npm --prefix superadmin run smoke",
+    "install:all": "npm install && npm --prefix superadmin install",
+    "build": "npm run build:superadmin"
+  },
+  "devDependencies": {
+    "@php-wasm/node": "3.1.54",
+    "@php-wasm/universal": "3.1.54"
+  }
+}

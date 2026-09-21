@@ -218,6 +218,11 @@ $can_see_settings_group = has_permission('manage_customers') || has_permission('
                             <i class="fas fa-cog"></i><span class="menu-text">Settings</span>
                         </a>
                     </li>
+                    <li class="<?php echo $current_page == 'billing.php' ? 'active' : ''; ?>">
+                        <a href="<?php echo BASE_URL; ?>/admin/billing.php">
+                            <i class="fas fa-receipt"></i><span class="menu-text">Plan &amp; Billing</span>
+                        </a>
+                    </li>
                     <?php if (has_permission('manage_settings')): ?>
                         <li class="<?php echo $in_printing && $current_page != 'terminals.php' ? 'active' : ''; ?>">
                             <a href="<?php echo BASE_URL; ?>/admin/printing/index.php">

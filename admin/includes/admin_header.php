@@ -29,6 +29,7 @@
         ?>
 
         <div class="admin-main">
+            <?php include dirname(__FILE__) . '/../../platform/partials/impersonation_banner.php'; ?>
             <?php include dirname(__FILE__) . '/topnav.php'; ?>
 
             <div class="admin-content-padding">

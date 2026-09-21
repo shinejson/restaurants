@@ -1,0 +1,23 @@
+{
+  "name": "restaurantos-superadmin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "React superadmin console for the RestaurantOS multi-tenant platform.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "smoke": "esbuild tools/smoke-entry.jsx --bundle --format=esm --platform=node --jsx=automatic --external:jsdom --outfile=tools/.smoke.mjs --log-level=warning && node tools/.smoke.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.2",
+    "jsdom": "^30.1.0",
+    "vite": "^5.4.8"
+  }
+}
