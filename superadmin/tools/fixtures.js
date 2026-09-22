@@ -57,6 +57,30 @@ const subscription = {
   current_period_end: '2026-10-19 08:00:00', days_remaining: 30,
 };
 
+const settingsData = {
+  platform_name: 'RestaurantOS', support_email: 'support@restaurantos.test',
+  default_currency: 'USD', default_trial_days: '14', default_plan: 'growth',
+  tax_rate: '0', invoice_prefix: 'INV', invoice_due_days: '14',
+  past_due_grace_days: '7', auto_suspend: '1',
+  signup_enabled: '1', maintenance_mode: '0',
+  maintenance_message: 'We are performing scheduled maintenance and will be back shortly.',
+  announcement_banner: '', new_tenant_notifications: '1', brand_accent: '#6366f1',
+};
+
+const settingsGroupKeys = {
+  brand: ['platform_name', 'support_email', 'brand_accent', 'announcement_banner'],
+  billing: ['default_currency', 'default_trial_days', 'default_plan', 'tax_rate', 'invoice_prefix', 'invoice_due_days', 'past_due_grace_days', 'auto_suspend'],
+  access: ['signup_enabled', 'maintenance_mode', 'maintenance_message'],
+  notifications: ['new_tenant_notifications'],
+};
+
+const settingsGroups = Object.fromEntries(
+  Object.entries(settingsGroupKeys).map(([group, keys]) => [
+    group,
+    keys.map((setting_key) => ({ setting_key, setting_value: settingsData[setting_key] })),
+  ]),
+);
+
 const audit = (id) => ({
   id, actor_type: 'platform', actor_id: 1, actor_name: 'Platform Owner', tenant_id: id === 2 ? 1 : null,
   tenant_name: id === 2 ? 'Aurora Kitchen' : null, action: 'tenant.updated', target_type: 'tenant', target_id: '1',
@@ -116,8 +140,7 @@ export const responses = {
   '/audit-logs': { data: [audit(27), audit(26)], meta: { total: 2, page: 1, per_page: 40, last_page: 1, actions: ['tenant.updated', 'auth.login'] } },
   '/notifications': { data: [{ id: 12, tenant_id: 1, type: 'tenant.impersonation', level: 'warning', title: 'Support session started', body: 'Platform Owner signed in as the owner', read_at: null, created_at: '2026-09-19 07:41:11', tenant_name: 'Aurora Kitchen', ago: '1h ago' }], meta: { unread: 1 } },
   '/team': { data: [{ id: 1, name: 'Platform Owner', email: 'owner@restaurantos.test', role: 'owner', is_active: 1, last_login_at: '2026-09-19 06:00:00', created_at: '2026-09-01 08:00:00' }], meta: { roles: { owner: { label: 'Owner', description: 'Full access', permissions: ['*'] }, admin: { label: 'Admin', description: 'Day to day', permissions: ['tenants.view'] } } } },
-  '/settings': { data: { platform_name: 'RestaurantOS', support_email: 'support@restaurantos.test', default_currency: 'USD', default_trial_days: '14', default_plan: 'growth', tax_rate: '0', invoice_prefix: 'INV', invoice_due_days: '14', signup_enabled: '1', maintenance_mode: '0', maintenance_message: '', announcement_banner: '', new_tenant_notifications: '1', past_due_grace_days: '3',
-    groups: { access: [{ key: 'platform_name', label: 'Platform name', description: 'Shown in emails' }], billing: [{ key: 'default_trial_days', label: 'Trial days', description: 'Applied to new tenants' }, { key: 'signup_enabled', label: 'Signups open', description: 'Allow self-serve signups' }] } } },
+  '/settings': { data: { ...settingsData }, defaults: { ...settingsData }, groups: settingsGroups },
   '/system': { data: { php_version: '8.3.33', driver: 'sqlite', app_env: 'local', debug: true, timezone: 'UTC', server_time: '2026-09-19 08:00:00', tables: 29, storage: { directories: [{ name: 'platform', path: 'storage', size: 2500000, writable: true }] }, counts: { tenants: 6, invoices: 4 }, migrations: [{ migration: '0001_control_plane', batch: 1, applied_at: '2026-09-19 07:38:00' }] } },
 };
 
