@@ -202,6 +202,22 @@ if (!function_exists('current_tenant')) {
     }
 }
 
+/** The restaurant a visitor identified by code, or null. */
+if (!function_exists('tenant_by_code')) {
+    function tenant_by_code(string $code): ?\Resto\Tenancy\Tenant
+    {
+        return \Resto\Tenancy\tenant_by_code($code);
+    }
+}
+
+/** Point this request (and the session) at another restaurant. */
+if (!function_exists('use_tenant')) {
+    function use_tenant(\Resto\Tenancy\Tenant $tenant): \Resto\Database\Connection
+    {
+        return \Resto\Tenancy\use_tenant($tenant);
+    }
+}
+
 if (!function_exists('feature_enabled')) {
     function feature_enabled(string $feature): bool
     {

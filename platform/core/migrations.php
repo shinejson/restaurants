@@ -201,6 +201,8 @@ final class ControlPlaneSchema
             'id'               => ['id'],
             'uuid'             => ['string', 36, 'unique'],
             'slug'             => ['string', 64, 'unique'],
+            // Short code staff type at sign-in to identify the restaurant.
+            'access_code'      => ['string', 12, 'null' => true],
             'name'             => ['string', 160],
             'legal_name'       => ['string', 160, 'null'],
             'owner_name'       => ['string', 120, 'null'],
@@ -234,11 +236,14 @@ final class ControlPlaneSchema
             'created_by'       => ['int', 'null'],
             'created_at'       => ['datetime', 'default' => 'CURRENT_TIMESTAMP'],
             'updated_at'       => ['datetime', 'default' => 'CURRENT_TIMESTAMP'],
-        ], ['index' => [
-            ['columns' => ['status']],
-            ['columns' => ['plan_id']],
-            ['columns' => ['created_at']],
-        ]]);
+        ], [
+            'index'  => [
+                ['columns' => ['status']],
+                ['columns' => ['plan_id']],
+                ['columns' => ['created_at']],
+            ],
+            'unique' => [['access_code']],
+        ]);
 
         Schema::createTable($conn, $driver, 'tenant_domains', [
             'id'          => ['id'],

@@ -128,6 +128,21 @@ include 'includes/admin_header.php';
                         </div>
                     </div>
 
+                    <!-- Restaurant sign-in code -->
+                    <div style="display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; background: var(--light-bg); padding: 1.25rem; border-radius: 12px;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <label style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">Restaurant
+                                sign-in code</label>
+                            <input type="text" readonly onclick="this.select()"
+                                value="<?php echo htmlspecialchars(current_tenant()?->accessCode() ?? ''); ?>"
+                                title="Click to select — copy this code to share it with your staff"
+                                style="width: 100%; padding: 0.8rem; border: 1px dashed var(--border-color); border-radius: 8px; background: white; font-family: Consolas, monospace; font-size: 1.15rem; font-weight: 700; letter-spacing: 0.35em; text-align: center; text-transform: uppercase; cursor: pointer;">
+                            <small style="color: #777; display: block; margin-top: 0.3rem;">Staff type this code together
+                                with their username and password on the sign-in screen — it says which restaurant
+                                they are signing into. Share it freely; it is not a password.</small>
+                        </div>
+                    </div>
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                         <div>
                             <label style="display: block; font-weight: 700; color: #555; margin-bottom: 0.5rem;">Restaurant

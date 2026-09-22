@@ -92,8 +92,18 @@ return function (TestRunner $t): void {
         $t->ok($one instanceof Connection, 'Manager::tenant() returns a connection');
         $t->same($one, Manager::tenant($demo), 'tenant connections are memoised per request');
 
-        $other = Manager::tenant(['id' => 2, 'slug' => 'other-co', 'db_name' => 'restaurantos_t_other_co']);
-        $t->ok($one !== $other, 'different tenants get different connections');
+        // A second tenant must get its own connection object. SQLite creates the
+        // missing file on demand; MySQL (db-per-tenant) refuses to connect to a
+        // database that does not exist yet — both behaviours are correct.
+        try {
+            $other = Manager::tenant(['id' => 2, 'slug' => 'other-co', 'db_name' => 'restaurantos_t_other_co']);
+            $t->ok($one !== $other, 'different tenants get different connections');
+        } catch (PDOException $e) {
+            $t->ok(
+                Manager::driver() === 'mysql' && str_contains($e->getMessage(), 'Unknown database'),
+                'MySQL rejects a tenant database that has not been provisioned yet'
+            );
+        }
 
         $t->same('restaurantos_t_other_co', Manager::tenantDatabaseName('other-co'), 'slug => database name is sanitised');
     });

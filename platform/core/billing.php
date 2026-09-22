@@ -604,7 +604,7 @@ final class InvoiceService
         $number = $this->nextNumber();
         Manager::platform()->prepare(
             'INSERT INTO invoices (tenant_id, subscription_id, number, status, currency, subtotal, discount, tax, total,
-                                   period_start, period_end, issued_at, due_at, lines, notes, created_at, updated_at)
+                                   period_start, period_end, issued_at, due_at, `lines`, notes, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             $tenant->id(),
@@ -661,7 +661,7 @@ final class InvoiceService
         $number = $this->nextNumber();
         Manager::platform()->prepare(
             'INSERT INTO invoices (tenant_id, subscription_id, number, status, currency, subtotal, discount, tax, total,
-                                   issued_at, due_at, lines, notes, created_at, updated_at)
+                                   issued_at, due_at, `lines`, notes, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             $tenant->id(),

@@ -46,8 +46,8 @@
     <header class="main-header">
         <div class="container">
             <div class="header-content">
-                <a href="<?php echo BASE_URL; ?>/index.php" class="logo">
-                    <i class="fas fa-utensils"></i> Food<span>Express</span>
+                                                <a href="<?php echo BASE_URL; ?>/index.php" class="logo">
+                    <i class="fas fa-utensils"></i> <?php echo htmlspecialchars(get_setting('company_name', 'Restaurant')); ?>
                 </a>
 
                 <button class="menu-toggle" aria-label="Toggle Navigation">

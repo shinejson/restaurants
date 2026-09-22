@@ -1,0 +1,30 @@
+# Declare UTF-8 on static assets (JS/CSS/HTML) so em-dashes, accented names
+# and branding symbols aren't mis-decoded as Latin-1 by the browser.
+# PHP/JSON API responses already set charset=utf-8 themselves.
+AddDefaultCharset UTF-8
+
+# RestaurantOS — superadmin console (React SPA).
+#
+# The console is a Vite build in dist/ (npm run build). Once built, Apache
+# serves it in place of the dev shell (index.html + src/), so no Node tooling
+# is needed at runtime:
+#
+#   /superadmin/              → dist/index.html   (DirectoryIndex)
+#   /superadmin/assets/*      → dist/assets/*
+#   /superadmin/tenants/…     → dist/index.html   (client-side routes)
+#
+# The dev shell (index.html, src/) stays reachable for `npm run dev`.
+
+DirectoryIndex dist/index.html
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Built assets live in dist/assets/.
+    RewriteRule ^assets/(.+)$ dist/assets/$1 [L]
+
+    # Client-side routes (deep links) fall back to the built shell — but never
+    # shadow real files (dev shell, sources, tools) or the build output.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(?!index\.html$|src/|tools/|dist/).+$ dist/index.html [QSA,L]
+</IfModule>

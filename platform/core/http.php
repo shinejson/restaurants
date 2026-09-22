@@ -98,13 +98,21 @@ final class Request
             $headers['content-type'] = (string) $_SERVER['CONTENT_TYPE'];
         }
 
-        // Front controllers are reached through a rewrite, which replaces
-        // REQUEST_URI with the script path. The original URL is forwarded in a
-        // header so routing still sees /api/v1/… (and REDIRECT_URL is honoured
-        // when Apache/nginx provide it).
-        $original = $headers['x-original-uri'] ?? ($_SERVER['REDIRECT_URL'] ?? null);
-        if (is_string($original) && str_starts_with($original, '/api/')) {
-            $uri = $original;
+        // Front controllers are reached through a rewrite. The wasm dev server
+        // replaces REQUEST_URI with the script path and forwards the original
+        // URL in a header. Apache keeps the original REQUEST_URI — which for
+        // sub-directory installs is prefixed ("…/restaurants/api/v1/…") — and
+        // nginx proxies may send x-original-uri. The router only ever speaks
+        // /api/…, so cut everything before it in every one of those shapes.
+        foreach ([
+            $headers['x-original-uri'] ?? null,
+            $uri,
+            $_SERVER['REDIRECT_URL'] ?? null,
+        ] as $candidate) {
+            if (is_string($candidate) && ($at = strpos($candidate, '/api/')) !== false) {
+                $uri = substr($candidate, $at);
+                break;
+            }
         }
 
         $path = parse_url($uri, PHP_URL_PATH) ?: '/';

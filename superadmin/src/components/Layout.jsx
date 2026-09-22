@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { relative } from '../lib/format';
@@ -24,48 +24,105 @@ const NAV = [
   ] },
 ];
 
+const ROLE_LABELS = {
+  owner:   'Owner',
+  admin:   'Administrator',
+  support: 'Support',
+  billing: 'Billing',
+  viewer:  'Read only',
+};
+
 export default function Layout() {
   const { user, logout, can, unread, setUnread } = useSession();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [notifications, setNotifications] = useState([]);
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const navigate    = useNavigate();
+  const location    = useLocation();
+  const profileRef  = useRef(null);
 
+  const [notifications, setNotifications] = useState([]);
+  const [panelOpen,     setPanelOpen]     = useState(false);
+  const [sidebarOpen,   setSidebarOpen]   = useState(false);   // mobile overlay
+  const [collapsed,     setCollapsed]     = useState(false);   // desktop icon-only
+  const [profileOpen,   setProfileOpen]   = useState(false);   // profile dropdown
+  const [query,         setQuery]         = useState('');
+
+  const [theme, setTheme] = useState(() => {
+    const saved = globalThis.localStorage?.getItem('restaurantos-superadmin-theme');
+    return saved === 'light' ? 'light' : 'dark';
+  });
+
+  /* ---- theme ---- */
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    globalThis.localStorage?.setItem('restaurantos-superadmin-theme', theme);
+  }, [theme]);
+
+  /* ---- close panels on navigation ---- */
   useEffect(() => {
     setSidebarOpen(false);
     setPanelOpen(false);
+    setProfileOpen(false);
   }, [location.pathname]);
 
+  /* ---- notifications ---- */
   useEffect(() => {
     api
       .get('/notifications', { per_page: 12 })
-      .then((response) => setNotifications(response.data || []))
+      .then((res) => setNotifications(res.data || []))
       .catch(() => {});
   }, [location.pathname]);
 
+  /* ---- close profile dropdown on outside click ---- */
+  useEffect(() => {
+    if (!profileOpen) return undefined;
+    const handler = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [profileOpen]);
+
+  /* ---- handlers ---- */
   const markRead = async () => {
     await api.post('/notifications/read', {});
     setUnread(0);
-    setNotifications((current) => current.map((item) => ({ ...item, read_at: item.read_at || 'now' })));
+    setNotifications((curr) => curr.map((n) => ({ ...n, read_at: n.read_at || 'now' })));
   };
 
-  const submitSearch = (event) => {
-    event.preventDefault();
+  const submitSearch = (e) => {
+    e.preventDefault();
     if (!query.trim()) return;
     navigate(`/tenants?search=${encodeURIComponent(query.trim())}`);
   };
 
+  /**
+   * Hamburger logic:
+   *  - Mobile (<860 px, matches the existing breakpoint): toggle overlay sidebar
+   *  - Desktop: collapse sidebar to icon-only rail
+   */
+  const handleHamburger = () => {
+    if (window.innerWidth < 860) {
+      setSidebarOpen((o) => !o);
+    } else {
+      setCollapsed((c) => !c);
+    }
+  };
+
+  /* ---- render ---- */
   return (
     <div className="shell">
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+
+      {/* ===================== SIDEBAR ===================== */}
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
         <div className="brand">
           <span className="brand-mark">R</span>
-          <div>
-            <strong>RestaurantOS</strong>
-            <span className="muted small">Platform console</span>
-          </div>
+          {!collapsed && (
+            <div>
+              <strong>RestaurantOS</strong>
+              <span className="muted small">Platform console</span>
+            </div>
+          )}
         </div>
 
         <nav>
@@ -74,11 +131,17 @@ export default function Layout() {
             if (!items.length) return null;
             return (
               <div key={section.group} className="nav-group">
-                <span className="nav-group-label">{section.group}</span>
+                {!collapsed && <span className="nav-group-label">{section.group}</span>}
                 {items.map((item) => (
-                  <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    title={collapsed ? item.label : undefined}
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                  >
                     <span className="nav-icon">{item.icon}</span>
-                    {item.label}
+                    {!collapsed && item.label}
                   </NavLink>
                 ))}
               </div>
@@ -87,42 +150,146 @@ export default function Layout() {
         </nav>
 
         <div className="sidebar-foot">
-          <div className="user-chip">
-            <Avatar name={user?.name} size={36} />
-            <div className="grow">
-              <strong>{user?.name}</strong>
-              <span className="muted small">{user?.email}</span>
-            </div>
-          </div>
-          <Button size="sm" variant="ghost" onClick={logout}>
-            Sign out
-          </Button>
+          {collapsed ? (
+            /* icon-only sign-out when collapsed */
+            <button
+              className="icon-btn"
+              onClick={logout}
+              title="Sign out"
+              aria-label="Sign out"
+              style={{ width: '100%', borderRadius: 'var(--radius-sm)' }}
+            >
+              ⏻
+            </button>
+          ) : (
+            <>
+              <div className="user-chip">
+                <Avatar name={user?.name} size={36} />
+                <div className="grow">
+                  <strong>{user?.name}</strong>
+                  <span className="muted small">{user?.email}</span>
+                </div>
+              </div>
+              <Button size="sm" variant="ghost" onClick={logout}>
+                Sign out
+              </Button>
+            </>
+          )}
         </div>
       </aside>
 
       {sidebarOpen && <div className="sidebar-scrim" onClick={() => setSidebarOpen(false)} />}
 
+      {/* ===================== MAIN ===================== */}
       <div className="main">
+
+        {/* ---- TOPBAR ---- */}
         <header className="topbar">
-          <button className="icon-btn only-mobile" onClick={() => setSidebarOpen(true)} aria-label="Menu">
+
+          {/* Hamburger — always visible */}
+          <button
+            className="icon-btn"
+            onClick={handleHamburger}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
             ☰
           </button>
+
+          {/* Search */}
           <form className="search" onSubmit={submitSearch}>
             <span>⌕</span>
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder="Search restaurants…"
               aria-label="Search restaurants"
             />
           </form>
+
           <div className="grow" />
-          <button className={`icon-btn ${panelOpen ? 'active' : ''}`} onClick={() => setPanelOpen((open) => !open)} aria-label="Notifications">
+
+          {/* Theme toggle */}
+          <button
+            className="icon-btn"
+            onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+            aria-label="Toggle theme"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? '☀' : '☾'}
+          </button>
+
+          {/* Notification bell */}
+          <button
+            className={`icon-btn ${panelOpen ? 'active' : ''}`}
+            onClick={() => setPanelOpen((o) => !o)}
+            aria-label="Notifications"
+            title="Notifications"
+          >
             ✦
             {unread > 0 && <span className="badge-count">{unread}</span>}
           </button>
+
+          {/* ---- User profile ---- */}
+          <div className="profile-wrap" ref={profileRef}>
+            <button
+              className={`profile-btn ${profileOpen ? 'active' : ''}`}
+              onClick={() => setProfileOpen((o) => !o)}
+              aria-label="Your profile"
+              aria-expanded={profileOpen}
+            >
+              <Avatar name={user?.name} size={30} />
+              <span className="profile-btn-name">{user?.name}</span>
+              <span className="profile-chevron">{profileOpen ? '▲' : '▾'}</span>
+            </button>
+
+            {profileOpen && (
+              <div className="profile-menu" role="menu">
+                {/* Avatar + identity */}
+                <div className="profile-menu-head">
+                  <Avatar name={user?.name} size={44} />
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <strong style={{ display: 'block', fontSize: '0.94rem' }}>{user?.name}</strong>
+                    <span className="muted small block" style={{ wordBreak: 'break-all' }}>{user?.email}</span>
+                    {user?.role && (
+                      <span className="badge badge-indigo" style={{ marginTop: 6, display: 'inline-block' }}>
+                        {ROLE_LABELS[user.role] ?? user.role}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Secondary info */}
+                {(user?.job_title || user?.last_login_at) && (
+                  <>
+                    <div className="profile-menu-divider" />
+                    <div className="profile-menu-body">
+                      {user?.job_title && (
+                        <p className="muted small" style={{ marginBottom: 4 }}>{user.job_title}</p>
+                      )}
+                      {user?.last_login_at && (
+                        <p className="muted tiny">Last signed in {relative(user.last_login_at)}</p>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                <div className="profile-menu-divider" />
+
+                {/* Actions */}
+                <button
+                  className="profile-menu-action danger"
+                  role="menuitem"
+                  onClick={() => { setProfileOpen(false); logout(); }}
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
+        {/* ---- Notification panel ---- */}
         {panelOpen && (
           <div className="notification-panel">
             <header>

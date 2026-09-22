@@ -2,6 +2,14 @@
 #
 # The dev server (tools/dev-server.mjs) applies the equivalent rules in
 # tools/php-runtime.mjs, so this file matters for real deployments only.
+#
+# Declare UTF-8 on every static response so browsers don't sniff/decode
+# UTF-8 bytes as Latin-1 (which mangles em-dashes, accented names and the
+# emoji in tenant branding into mojibake that looks like a foreign language).
+# PHP responses already carry charset=utf-8 via php.ini's default_charset.
+AddDefaultCharset UTF-8
+# AddDefaultCharset doesn't always apply to text/javascript, so be explicit:
+AddCharset UTF-8 .js .mjs .css .json .svg .xml .map
 
 <IfModule mod_rewrite.c>
     RewriteEngine On

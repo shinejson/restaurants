@@ -23,7 +23,36 @@ function clean_input($data)
  */
 function format_currency($amount)
 {
-    return 'GH₵' . number_format($amount, 2);
+    $symbol = get_setting('currency_symbol', '$');
+    $decimals = (int) (get_setting('currency_decimals', 2));
+    return $symbol . ' ' . number_format((float) $amount, $decimals);
+}
+
+/**
+ * Gather display-ready metadata for the current tenant.
+ * Used by the landing page (index.php), header and footer so every
+ * page reflects *this* restaurant rather than a hard-coded template.
+ */
+function tenant_meta(): array
+{
+    $tenant = \Resto\Tenancy\Context::get();
+    $name   = get_setting('company_name', $tenant instanceof \Resto\Tenancy\Tenant ? $tenant->name() : 'Restaurant');
+
+    return [
+        'name'             => $name,
+        'tagline'          => get_setting('site_tagline', 'Order online, pick up in store or dine in.'),
+        'description'      => get_setting('site_description', "Order the best food from {$name}. Fresh ingredients, fast delivery, and a wide variety of meals to choose from."),
+        'email'            => get_setting('contact_email', ''),
+        'phone'            => get_setting('contact_phone', ''),
+        'address'          => get_setting('contact_address', ''),
+        'currency'         => get_setting('currency', 'USD'),
+        'currency_symbol'  => get_setting('currency_symbol', '$'),
+        'cuisine'          => get_setting('site_cuisine', 'Local, Continental'),
+        'latitude'         => get_setting('geo_latitude', '0.0000'),
+        'longitude'        => get_setting('geo_longitude', '0.0000'),
+        'access_code'      => $tenant instanceof \Resto\Tenancy\Tenant ? $tenant->accessCode() : '',
+        'slug'             => $tenant instanceof \Resto\Tenancy\Tenant ? $tenant->slug() : '',
+    ];
 }
 
 /**

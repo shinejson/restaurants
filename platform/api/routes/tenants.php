@@ -39,6 +39,7 @@ use Resto\Tenancy\Gatekeeper;
 use Resto\Tenancy\Links;
 use Resto\Tenancy\Provisioner;
 use Resto\Tenancy\Tenant;
+use Resto\Tenancy\TenantCode;
 use Resto\Tenancy\TenantRepository;
 
 /* -------------------------------------------------------------------------
@@ -61,6 +62,7 @@ function resto_present_tenant(Tenant $tenant, bool $withUsage = false): array
         'uuid'            => $tenant->get('uuid'),
         'name'            => $tenant->name(),
         'slug'            => $tenant->slug(),
+        'access_code'     => $tenant->accessCode(),
         'legal_name'      => $tenant->get('legal_name'),
         'owner_name'      => $tenant->get('owner_name'),
         'owner_email'     => $tenant->get('owner_email'),
@@ -230,9 +232,24 @@ return static function (Router $router): void {
             $cycle     = $request->string('billing_cycle', 'monthly') === 'yearly' ? 'yearly' : 'monthly';
             $trialDays = min(90, max(0, $request->int('trial_days', $plan->trialDays())));
 
+            // Optional: the console may pick the restaurant's sign-in code;
+            // otherwise the repository mints a unique 5-character one.
+            $accessCode = TenantCode::normalise($request->string('access_code'));
+            if ($accessCode !== '') {
+                if (!TenantCode::isWellFormed($accessCode)) {
+                    throw ApiException::invalid([
+                        'access_code' => ['Use ' . TenantCode::length() . ' characters from A–Z and 2–9 (no 0/O or 1/I).'],
+                    ]);
+                }
+                if ($repo->accessCodeExists($accessCode)) {
+                    throw ApiException::conflict('That sign-in code is already used by another restaurant.');
+                }
+            }
+
             $tenant = $repo->create([
                 'name'          => $request->string('name'),
                 'slug'          => $slug,
+                'access_code'   => $accessCode !== '' ? $accessCode : null,
                 'legal_name'    => $request->string('legal_name') ?: null,
                 'owner_name'    => $request->string('owner_name'),
                 'owner_email'   => $email,

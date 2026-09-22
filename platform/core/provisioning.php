@@ -471,9 +471,13 @@ final class TenantSchema
             'smtp_username'    => '',
             'smtp_password'    => '',
             'smtp_encryption'  => 'tls',
-            'receipt_footer'   => 'Thank you for dining with us!',
+                        'receipt_footer'   => 'Thank you for dining with us!',
             'service_charge'   => '0',
             'tax_inclusive_pricing' => '0',
+            // Structured-data / landing-page display values
+            'site_cuisine'     => 'Local, Continental',
+            'geo_latitude'     => '0.0000',
+            'geo_longitude'    => '0.0000',
         ];
     }
 }
@@ -491,18 +495,39 @@ final class StarterData
     {
         $now = Clock::now();
 
-        self::seedSettings($conn, $tenant, $now);
-        self::seedRoles($conn);
-        $adminId = self::seedAdmin($conn, $tenant, $now);
-        self::seedTaxes($conn, $now);
-        self::seedCatalogue($conn, $now, $full);
-        self::seedFloor($conn, $now, $full);
-        self::seedDelivery($conn, $now);
-        self::seedPrinters($conn, $now);
+        // The whole dataset is written in a single transaction. Committing each
+        // row on its own made provisioning a demo tenant thousands of fsyncs
+        // slow, and a failure halfway through left a half-seeded restaurant
+        // behind. ($conn may already be inside a transaction — the migration
+        // runner does that — so only own one when nobody else does.)
+        $ownsTransaction = !$conn->inTransaction();
+        if ($ownsTransaction) {
+            $conn->beginTransaction();
+        }
 
-        if ($full) {
-            self::seedCustomersAndOrders($conn, $now);
-            self::seedEvents($conn, $now);
+        try {
+            self::seedSettings($conn, $tenant, $now);
+            self::seedRoles($conn);
+            $adminId = self::seedAdmin($conn, $tenant, $now);
+            self::seedTaxes($conn, $now);
+            self::seedCatalogue($conn, $now, $full);
+            self::seedFloor($conn, $now, $full);
+            self::seedDelivery($conn, $now);
+            self::seedPrinters($conn, $now);
+
+            if ($full) {
+                self::seedCustomersAndOrders($conn, $now);
+                self::seedEvents($conn, $now);
+            }
+
+            if ($ownsTransaction) {
+                $conn->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($ownsTransaction && $conn->inTransaction()) {
+                $conn->rollBack();
+            }
+            throw $e;
         }
     }
 
@@ -851,6 +876,12 @@ final class Provisioner
             'trial_ends_at' => $record['trial_ends_at'] ?? Clock::addDays(Clock::now(), $trialDays),
             'status'       => $record['status'] ?? 'trial',
         ];
+
+        // A tenant always needs its sign-in code: accounts created before codes
+        // existed (or through a path that bypassed the repository) get one here.
+        if ((string) ($record['access_code'] ?? '') === '') {
+            $updates['access_code'] = $repo->uniqueAccessCode();
+        }
 
         if ($isModel) {
             $repo->update($tenant->id(), $updates);

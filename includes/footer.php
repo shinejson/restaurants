@@ -7,11 +7,11 @@
             <!-- Company Info -->
             <div class="footer-section">
                 <h3>Company</h3>
+                        <div class="company-info">
                 <a href="index.php" class="logo footer-logo">
-                    <i class="fas fa-utensils"></i> <span>Food</span><span>Express</span>
+                    <i class="fas fa-utensils"></i> <span><?php echo htmlspecialchars(get_setting('company_name', 'Restaurant')); ?></span>
                 </a>
-                <p>Delivering delicious meals since 2024. Quality food, fast delivery, and excellent service straight to
-                    your door.</p>
+                <p><?php echo htmlspecialchars(get_setting('site_tagline', 'Order online, pick up in store or dine in.')); ?></p>
                 <div class="social-links">
                     <a href="#"><i class="fab fa-facebook-f"></i></a>
                     <a href="#"><i class="fab fa-twitter"></i></a>
@@ -41,11 +41,11 @@
             </div>
 
             <!-- Newsletter/Contact -->
-            <div class="footer-section">
+                        <div class="footer-section">
                 <h3>Contact</h3>
-                <p><i class="fas fa-map-marker-alt"></i> 123 Street, Accra, Ghana</p>
-                <p><i class="fas fa-phone-alt"></i> +233 244 123 456</p>
-                <p><i class="fas fa-envelope"></i> info@example.com</p>
+                <p><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars(get_setting('contact_address', '')); ?></p>
+                <p><i class="fas fa-phone-alt"></i> <?php echo htmlspecialchars(get_setting('contact_phone', '')); ?></p>
+                <p><i class="fas fa-envelope"></i> <?php echo htmlspecialchars(get_setting('contact_email', '')); ?></p>
 
                 <div class="newsletter-form">
                     <form action="#">
@@ -59,7 +59,7 @@
         </div>
 
         <div class="footer-bottom">
-            <p>&copy; <?php echo date('Y'); ?> FoodExpress. All Rights Reserved.</p>
+                        <p>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars(get_setting('company_name', 'Restaurant')); ?>. All Rights Reserved.</p>
         </div>
     </div>
 </footer>

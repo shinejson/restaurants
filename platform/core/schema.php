@@ -35,10 +35,13 @@ final class Schema
 
         foreach ((array) ($options['unique'] ?? []) as $unique) {
             $columns_ = (array) $unique;
-            $definitions[] = 'UNIQUE (' . implode(', ', array_map([self::class, 'quote'], $columns_)) . ')';
+            $definitions[] = 'UNIQUE (' . implode(', ', array_map(
+                static fn (string $column): string => self::quote($column, $driver),
+                $columns_
+            )) . ')';
         }
 
-        $sql = "CREATE TABLE IF NOT EXISTS " . self::quote($table) . " (\n    "
+        $sql = "CREATE TABLE IF NOT EXISTS " . self::quote($table, $driver) . " (\n    "
             . implode(",\n    ", array_filter($definitions))
             . "\n)";
 
@@ -57,13 +60,16 @@ final class Schema
     public static function createIndex(PDO $conn, string $driver, string $table, array $index): void
     {
         $name    = (string) ($index['name'] ?? ($table . '_' . implode('_', $index['columns']) . '_idx'));
-        $columns = array_map([self::class, 'quote'], (array) $index['columns']);
+        $columns = array_map(
+            static fn (string $column): string => self::quote($column, $driver),
+            (array) $index['columns']
+        );
         $kind    = !empty($index['unique']) ? 'UNIQUE INDEX' : 'INDEX';
 
         if ($driver === 'sqlite') {
             $conn->exec(
-                "CREATE {$kind} IF NOT EXISTS " . self::quote($name)
-                . ' ON ' . self::quote($table) . ' (' . implode(', ', $columns) . ')'
+                "CREATE {$kind} IF NOT EXISTS " . self::quote($name, $driver)
+                . ' ON ' . self::quote($table, $driver) . ' (' . implode(', ', $columns) . ')'
             );
             return;
         }
@@ -119,21 +125,21 @@ final class Schema
 
         if ($type === 'id') {
             $sql = $driver === 'sqlite'
-                ? self::quote($name) . ' INTEGER PRIMARY KEY AUTOINCREMENT'
-                : self::quote($name) . ' BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY';
+                ? self::quote($name, $driver) . ' INTEGER PRIMARY KEY AUTOINCREMENT'
+                : self::quote($name, $driver) . ' BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY';
             return $sql;
         }
 
         $sql = match ($type) {
-            'int', 'integer' => self::quote($name) . ($driver === 'sqlite' ? ' INTEGER' : ' INT'),
-            'bigint'         => self::quote($name) . ' BIGINT',
-            'bool', 'boolean' => self::quote($name) . ($driver === 'sqlite' ? ' INTEGER' : ' TINYINT(1)'),
-            'decimal', 'money' => self::quote($name) . ($driver === 'sqlite' ? ' NUMERIC' : " DECIMAL({$precision},{$scale})"),
-            'text', 'longtext' => self::quote($name) . ' TEXT',
-            'json'           => self::quote($name) . ($driver === 'sqlite' ? ' TEXT' : ' JSON'),
-            'date'           => self::quote($name) . ' DATE',
-            'datetime', 'timestamp' => self::quote($name) . ($driver === 'sqlite' ? ' TEXT' : ' DATETIME'),
-            default          => self::quote($name) . ($driver === 'sqlite' ? ' TEXT' : ' VARCHAR(' . ($length ?: 191) . ')'),
+            'int', 'integer' => self::quote($name, $driver) . ($driver === 'sqlite' ? ' INTEGER' : ' INT'),
+            'bigint'         => self::quote($name, $driver) . ' BIGINT',
+            'bool', 'boolean' => self::quote($name, $driver) . ($driver === 'sqlite' ? ' INTEGER' : ' TINYINT(1)'),
+            'decimal', 'money' => self::quote($name, $driver) . ($driver === 'sqlite' ? ' NUMERIC' : " DECIMAL({$precision},{$scale})"),
+            'text', 'longtext' => self::quote($name, $driver) . ' TEXT',
+            'json'           => self::quote($name, $driver) . ($driver === 'sqlite' ? ' TEXT' : ' JSON'),
+            'date'           => self::quote($name, $driver) . ' DATE',
+            'datetime', 'timestamp' => self::quote($name, $driver) . ($driver === 'sqlite' ? ' TEXT' : ' DATETIME'),
+            default          => self::quote($name, $driver) . ($driver === 'sqlite' ? ' TEXT' : ' VARCHAR(' . ($length ?: 191) . ')'),
         };
 
         if (!$nullable) {
@@ -169,9 +175,19 @@ final class Schema
         return "'" . str_replace("'", "''", (string) $value) . "'";
     }
 
-    public static function quote(string $identifier): string
+    /**
+     * Quote an identifier for the target driver.
+     *
+     * MySQL/MariaDB identifiers use backticks (the dialect the legacy app was
+     * written in — the SQLite translator rewrites backticks to double quotes);
+     * SQLite identifiers use double quotes. Bare double quotes are *not* valid
+     * MySQL identifiers unless the server runs with ANSI_QUOTES.
+     */
+    public static function quote(string $identifier, string $driver = 'mysql'): string
     {
-        return '"' . str_replace('"', '', $identifier) . '"';
+        $clean = str_replace(['"', '`'], '', $identifier);
+
+        return $driver === 'sqlite' ? '"' . $clean . '"' : '`' . $clean . '`';
     }
 
     /** Does a table exist? Works on both drivers. */
@@ -217,6 +233,6 @@ final class Schema
         if ($driver === 'sqlite' && str_contains($rendered, 'NOT NULL') && !str_contains($rendered, 'DEFAULT')) {
             $rendered = str_replace(' NOT NULL', '', $rendered) . ' DEFAULT NULL';
         }
-        $conn->exec('ALTER TABLE ' . self::quote($table) . ' ADD COLUMN ' . $rendered);
+        $conn->exec('ALTER TABLE ' . self::quote($table, $driver) . ' ADD COLUMN ' . $rendered);
     }
 }

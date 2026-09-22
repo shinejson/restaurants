@@ -27,8 +27,8 @@ printf(
 );
 
 echo "\ntenants\n";
-foreach (Manager::platform()->query('SELECT id, slug, name, status, mrr, db_name FROM tenants ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) as $t) {
-    printf("  #%-3d %-18s %-22s %-10s mrr=%-8s %s\n", $t['id'], $t['slug'], $t['name'], $t['status'], $t['mrr'], $t['db_name']);
+foreach (Manager::platform()->query('SELECT id, slug, name, status, mrr, db_name, access_code FROM tenants ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) as $t) {
+    printf("  #%-3d %-18s %-22s %-10s mrr=%-8s code=%-6s %s\n", $t['id'], $t['slug'], $t['name'], $t['status'], $t['mrr'], $t['access_code'], $t['db_name']);
 }
 
 $overview = Metrics::overview();

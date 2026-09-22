@@ -1,4 +1,7 @@
 <?php
+use Resto\Tenancy\Resolver;
+use Resto\Tenancy\TenantCode;
+
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
@@ -22,6 +25,19 @@ if (isset($_SESSION['session_msg'])) {
     unset($_SESSION['session_msg']);
 }
 
+/* ---------------------------------------------------------------------------
+ * Restaurant code — which restaurant is this sign-in for?
+ *
+ * Single-host installations (localhost, sandboxes, one shared landing page)
+ * cannot tell restaurants apart by domain, so the code on this form is what
+ * selects the tenant database the credentials are checked against. When the
+ * host itself names the restaurant (sub-domain or custom domain) the code is
+ * optional — but if it is typed, it must be this restaurant's code.
+ * ------------------------------------------------------------------------ */
+$code_required = !Resolver::hostIdentifiesTenant();
+$entered_code  = TenantCode::normalise((string) ($_POST['tenant_code'] ?? ''));
+$signing_into  = current_tenant()?->name();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = clean_input($_POST['username']);
     $password = $_POST['password'];
@@ -29,34 +45,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // CSRF protection
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         $error = 'Invalid security token';
+    } elseif ($code_required && $entered_code === '') {
+        $error = 'Enter your restaurant code to sign in.';
     } else {
-        // Check credentials
-        // Check credentials
-        // Fixed: password_hash -> password to match our shared schema
-        $stmt = $conn->prepare("SELECT id, username, password, role FROM admins WHERE username = ?");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch();
+        // The code decides which restaurant (and database) we authenticate
+        // against; without one, the host that served this page does.
+        if ($entered_code !== '') {
+            $target = tenant_by_code($entered_code);
 
-        if ($user && password_verify($password, $user['password'])) {
-            // Regenerate session ID for security
-            session_regenerate_id(true);
+            if ($target === null) {
+                $error = 'That restaurant code was not found. Check it and try again.';
+            } elseif (!$code_required
+                && current_tenant() !== null
+                && $target->id() !== current_tenant()->id()) {
+                $error = 'That code belongs to a different restaurant.';
+            } else {
+                $signing_into = $target->name();
+                if (current_tenant() === null || $target->id() !== current_tenant()->id()) {
+                    // Re-point this request (and the session) at that restaurant.
+                    $conn = use_tenant($target);
+                }
+            }
+        }
 
-            // Set session variables
-            $_SESSION['admin_id'] = $user['id'];
-            $_SESSION['admin_username'] = $user['username'];
-            $_SESSION['admin_role'] = $user['role'];
-            $_SESSION['is_admin'] = true;
+        if ($error === '') {
+            // Check credentials
+            // Fixed: password_hash -> password to match our shared schema
+            $stmt = $conn->prepare("SELECT id, username, password, role FROM admins WHERE username = ?");
+            $stmt->execute([$username]);
+            $user = $stmt->fetch();
 
-            // Clear any existing customer session to prevent conflicts
-            unset($_SESSION['user_id']);
-            unset($_SESSION['username']);
-            unset($_SESSION['user_role']);
+            if ($user && password_verify($password, $user['password'])) {
+                // Regenerate session ID for security
+                session_regenerate_id(true);
 
-            // Redirect to admin dashboard
-            header('Location: ' . BASE_URL . '/admin/dashboard.php');
-            exit();
-        } else {
-            $error = 'Invalid username or password';
+                // Set session variables
+                $_SESSION['admin_id'] = $user['id'];
+                $_SESSION['admin_username'] = $user['username'];
+                $_SESSION['admin_role'] = $user['role'];
+                $_SESSION['is_admin'] = true;
+
+                // Clear any existing customer session to prevent conflicts
+                unset($_SESSION['user_id']);
+                unset($_SESSION['username']);
+                unset($_SESSION['user_role']);
+
+                // Redirect to admin dashboard
+                header('Location: ' . BASE_URL . '/admin/dashboard.php');
+                exit();
+            } else {
+                $error = 'Invalid username or password';
+            }
         }
     }
 }
@@ -128,6 +167,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
+        /* The restaurant code is typed character by character — make that easy. */
+        .form-control.code {
+            text-transform: uppercase;
+            letter-spacing: 0.35em;
+            font-weight: 700;
+            text-align: center;
+        }
+
         .btn-login {
             width: 100%;
             padding: 0.8rem;
@@ -184,7 +231,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="login-box">
             <div class="login-header">
                 <h1><i class="fas fa-lock"></i> Admin Login</h1>
-                <p>Access the admin dashboard</p>
+                <p><?php echo $signing_into !== ''
+                    ? 'Sign in to ' . htmlspecialchars($signing_into)
+                    : 'Access the admin dashboard'; ?></p>
             </div>
 
             <?php if ($error): ?>
@@ -204,13 +253,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
 
                 <div class="form-group">
+                    <label for="tenant_code"><i class="fas fa-store"></i> Restaurant code</label>
+                    <input type="text" id="tenant_code" name="tenant_code" class="form-control code"
+                           value="<?php echo htmlspecialchars($entered_code); ?>"
+                           maxlength="12" autocomplete="off" spellcheck="false"
+                           placeholder="e.g. K7M2Q" <?php echo $code_required ? 'required' : ''; ?>>
+                    <small style="color:#888; display:block; margin-top:0.4rem;">
+                        The <?php echo TenantCode::length(); ?>-character code for your restaurant — from your
+                        welcome email or the platform admin.
+                    </small>
+                </div>
+
+                <div class="form-group">
                     <label for="username"><i class="fas fa-user"></i> Username</label>
-                    <input type="text" id="username" name="username" class="form-control" required autofocus>
+                    <input type="text" id="username" name="username" class="form-control" autocomplete="username" required>
                 </div>
 
                 <div class="form-group">
                     <label for="password"><i class="fas fa-key"></i> Password</label>
-                    <input type="password" id="password" name="password" class="form-control" required>
+                    <input type="password" id="password" name="password" class="form-control" autocomplete="current-password" required>
                 </div>
 
                 <button type="submit" class="btn-login">
@@ -229,9 +290,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
-        // Focus on username field
-        const userField = document.getElementById('username');
-        if (userField) userField.focus();
+        // Focus the first field the visitor has to fill in.
+        const firstField = document.getElementById('<?php echo $code_required ? 'tenant_code' : 'username'; ?>');
+        if (firstField) firstField.focus();
     </script>
 </body>
 

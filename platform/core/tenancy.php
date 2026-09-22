@@ -58,6 +58,12 @@ final class Tenant
         return (string) ($this->attributes['name'] ?? 'Restaurant');
     }
 
+    /** The short code staff type at sign-in to say which restaurant they are signing into. */
+    public function accessCode(): string
+    {
+        return (string) ($this->attributes['access_code'] ?? '');
+    }
+
     public function status(): string
     {
         return (string) ($this->attributes['status'] ?? 'trial');
@@ -122,6 +128,58 @@ final class Tenant
     public function only(array $keys): array
     {
         return array_intersect_key($this->attributes, array_flip($keys));
+    }
+}
+
+/* -------------------------------------------------------------------------
+ * TenantCode — the short code that identifies a restaurant at sign-in
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Every restaurant account owns a unique, human-readable code such as "K7M2Q".
+ * Visitors type it on the sign-in form: on a single-host installation
+ * (localhost, a sandbox preview, one shared landing page) the code is what
+ * tells the application which tenant database to authenticate against.
+ *
+ * The alphabet leaves out 0/O, 1/I/L and U so a code read over the phone or
+ * printed on a receipt cannot be confused. The code is an identifier, not a
+ * secret — treat it like a company/branch number, never as a password.
+ */
+final class TenantCode
+{
+    private const ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+    /** Characters per code (config: tenancy.access_code_length, default 5). */
+    public static function length(): int
+    {
+        return max(4, min(12, (int) Config::get('tenancy.access_code_length', 5)));
+    }
+
+    /** A fresh random code, e.g. "K7M2Q". */
+    public static function generate(): string
+    {
+        $alphabet = self::ALPHABET;
+        $max      = strlen($alphabet) - 1;
+        $code     = '';
+        for ($i = 0, $length = self::length(); $i < $length; $i++) {
+            $code .= $alphabet[random_int(0, $max)];
+        }
+        return $code;
+    }
+
+    /** " k7m-2q " => "K7M2Q" — accept a code however a human types it. */
+    public static function normalise(string $code): string
+    {
+        return preg_replace('/[^0-9A-Z]/', '', strtoupper(trim($code))) ?? '';
+    }
+
+    /** Does this look like one of our codes? (Older codes may differ in length.) */
+    public static function isWellFormed(string $code): bool
+    {
+        $code   = self::normalise($code);
+        $length = strlen($code);
+
+        return $length >= 4 && $length <= 12 && strspn($code, self::ALPHABET) === $length;
     }
 }
 
@@ -230,15 +288,11 @@ final class Resolver
         }
 
         // 4. Sub-domain of the platform root domain.
-        $root = (string) Config::get('app.root_domain');
-        if ($host !== '' && $root !== '' && str_ends_with($host, '.' . $root)) {
-            $sub = substr($host, 0, -(strlen($root) + 1));
-            $sub = str_contains($sub, '.') ? substr($sub, strrpos($sub, '.') + 1) : $sub;
-            if ($sub !== '' && !in_array($sub, (array) Config::get('tenancy.reserved_hosts', []), true)) {
-                $tenant = $repo->findBySlug($sub);
-                if ($tenant) {
-                    return self::$resolved = $tenant;
-                }
+        $sub = self::subdomainOf($host);
+        if ($sub !== '') {
+            $tenant = $repo->findBySlug($sub);
+            if ($tenant) {
+                return self::$resolved = $tenant;
             }
         }
 
@@ -269,6 +323,61 @@ final class Resolver
         }
 
         return self::$resolved = null;
+    }
+
+    /**
+     * Did the request host identify the tenant on its own — a custom domain or
+     * a tenant sub-domain? Single-host installations (localhost, a sandbox
+     * preview, one shared landing page) cannot, and that is exactly when a
+     * visitor has to type their restaurant code at sign-in.
+     */
+    public static function hostIdentifiesTenant(): bool
+    {
+        $host = preg_replace('/:\d+$/', '', (string) (self::host() ?? '')) ?? '';
+        if ($host === '') {
+            return false;
+        }
+
+        return self::subdomainOf($host) !== ''
+            || (new TenantRepository())->findByHostname($host) !== null;
+    }
+
+    /**
+     * Remember a tenant for the rest of this session.
+     *
+     * Used by the sign-in screens: once a visitor has identified their
+     * restaurant by code, every later request must keep using it.
+     */
+    public static function remember(Tenant $tenant): void
+    {
+        self::$resolved  = $tenant;
+        self::$attempted = true;
+
+        if (PHP_SAPI !== 'cli' && session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION[self::SESSION_KEY] = $tenant->slug();
+        }
+    }
+
+    /**
+     * Tenant sub-domain of a host, or '' when the host is not a tenant
+     * sub-domain of the platform root domain (or is a reserved one).
+     */
+    private static function subdomainOf(string $host): string
+    {
+        $root = (string) Config::get('app.root_domain');
+        if ($host === '' || $root === '' || !str_ends_with($host, '.' . $root)) {
+            return '';
+        }
+
+        $sub = substr($host, 0, -(strlen($root) + 1));
+        // Deep sub-domains may also point at us: "eu.aurora.restaurantos.test".
+        $sub = str_contains($sub, '.') ? substr($sub, strrpos($sub, '.') + 1) : $sub;
+
+        if ($sub === '' || in_array($sub, (array) Config::get('tenancy.reserved_hosts', []), true)) {
+            return '';
+        }
+
+        return $sub;
     }
 
     /** Reset memoised state (used by tests and the provisioning wizard). */
@@ -450,9 +559,10 @@ final class TenantRepository
             $params[] = $filters['cycle'];
         }
         if (!empty($filters['search'])) {
-            $where[] = '(t.name LIKE ? OR t.slug LIKE ? OR t.owner_email LIKE ? OR t.owner_name LIKE ?)';
             $term    = '%' . $filters['search'] . '%';
-            $params  = array_merge($params, [$term, $term, $term, $term]);
+            $code    = '%' . TenantCode::normalise((string) $filters['search']) . '%';
+            $where[] = '(t.name LIKE ? OR t.slug LIKE ? OR t.owner_email LIKE ? OR t.owner_name LIKE ? OR t.access_code LIKE ?)';
+            $params  = array_merge($params, [$term, $term, $term, $term, $code]);
         }
 
         if ($where !== []) {
@@ -508,9 +618,10 @@ final class TenantRepository
             $params[] = (int) $filters['plan_id'];
         }
         if (!empty($filters['search'])) {
-            $where[] = '(t.name LIKE ? OR t.slug LIKE ? OR t.owner_email LIKE ? OR t.owner_name LIKE ?)';
             $term    = '%' . $filters['search'] . '%';
-            $params  = array_merge($params, [$term, $term, $term, $term]);
+            $code    = '%' . TenantCode::normalise((string) $filters['search']) . '%';
+            $where[] = '(t.name LIKE ? OR t.slug LIKE ? OR t.owner_email LIKE ? OR t.owner_name LIKE ? OR t.access_code LIKE ?)';
+            $params  = array_merge($params, [$term, $term, $term, $term, $code]);
         }
         if ($where !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
@@ -563,6 +674,25 @@ final class TenantRepository
         $stmt->execute([$slug]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         return $row ? (self::$cache['slug:' . $slug] = Tenant::fromRow($row)) : null;
+    }
+
+    /** Look a tenant up by the code staff type at sign-in. */
+    public function findByCode(string $code): ?Tenant
+    {
+        $code = TenantCode::normalise($code);
+        if ($code === '') {
+            return null;
+        }
+        if (isset(self::$cache['code:' . $code])) {
+            return self::$cache['code:' . $code];
+        }
+        $stmt = Manager::platform()->prepare(
+            'SELECT t.*, p.name AS plan_name, p.code AS plan_code, p.limits AS plan_limits, p.features AS plan_features
+             FROM tenants t LEFT JOIN plans p ON p.id = t.plan_id WHERE UPPER(t.access_code) = ?'
+        );
+        $stmt->execute([$code]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $row ? (self::$cache['code:' . $code] = Tenant::fromRow($row)) : null;
     }
 
     public function findByUuid(string $uuid): ?Tenant
@@ -630,6 +760,46 @@ final class TenantRepository
         return (int) $stmt->fetchColumn() > 0;
     }
 
+    /** Is this sign-in code already taken by another restaurant? */
+    public function accessCodeExists(string $code, ?int $exceptId = null): bool
+    {
+        $code = TenantCode::normalise($code);
+        if ($code === '') {
+            return false;
+        }
+
+        $sql    = 'SELECT COUNT(*) FROM tenants WHERE UPPER(access_code) = ?';
+        $params = [$code];
+        if ($exceptId !== null) {
+            $sql     .= ' AND id <> ?';
+            $params[] = $exceptId;
+        }
+        $stmt = Manager::platform()->prepare($sql);
+        $stmt->execute($params);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    /** A code no other restaurant is using yet. */
+    public function uniqueAccessCode(): string
+    {
+        for ($attempt = 0; $attempt < 25; $attempt++) {
+            $code = TenantCode::generate();
+            if (!$this->accessCodeExists($code)) {
+                return $code;
+            }
+        }
+
+        // 25 collisions in a row means the short-code space is genuinely
+        // crowded: widen instead of failing the signup.
+        return substr(TenantCode::generate() . TenantCode::generate(), 0, 12);
+    }
+
+    /** Issue a fresh code (e.g. after one has leaked) and return the tenant. */
+    public function rotateAccessCode(int $id): Tenant
+    {
+        return $this->update($id, ['access_code' => $this->uniqueAccessCode()]);
+    }
+
     public function create(array $data): Tenant
     {
         $platform = Manager::platform();
@@ -638,6 +808,12 @@ final class TenantRepository
         $record = [
             'uuid'          => Str::uuid(),
             'slug'          => $slug,
+            // The code staff type at sign-in. A caller may supply one (validated
+            // upstream); otherwise we mint a unique 5-character code here so
+            // every account created through any path has one.
+            'access_code'   => isset($data['access_code']) && TenantCode::isWellFormed((string) $data['access_code'])
+                ? TenantCode::normalise((string) $data['access_code'])
+                : $this->uniqueAccessCode(),
             'name'          => $data['name'],
             'legal_name'    => $data['legal_name'] ?? null,
             'owner_name'    => $data['owner_name'] ?? null,

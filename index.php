@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Enable error reporting for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -56,9 +56,12 @@ try {
     die("Error: " . $e->getMessage());
 }
 
+// Gather tenant-aware display metadata (name, phone, address, currency, ...)
+$meta = tenant_meta();
+
 // SEO Meta Tags
-$page_title = "Home | Airport West Hotel - Delicious Food Delivered";
-$page_description = "Order the best food from Airport West Hotel. We offer a wide variety of local and continental dishes delivered straight to your door.";
+$page_title = "Home | " . $meta['name'];
+$page_description = $meta['description'];
 
 include 'includes/header.php';
 ?>
@@ -72,8 +75,8 @@ include 'includes/header.php';
       "@type": "WebSite",
       "@id": "<?php echo BASE_URL; ?>/#website",
       "url": "<?php echo BASE_URL; ?>",
-      "name": "Airport West Hotel Food Ordering",
-      "description": "<?php echo $page_description; ?>",
+      "name": "<?php echo htmlspecialchars($meta['name'] . ' Food Ordering'); ?>",
+      "description": "<?php echo htmlspecialchars($meta['description']); ?>",
       "potentialAction": [
         {
           "@type": "SearchAction",
@@ -88,23 +91,30 @@ include 'includes/header.php';
     {
       "@type": "Restaurant",
       "@id": "<?php echo BASE_URL; ?>/#restaurant",
-      "name": "Airport West Hotel",
+      "name": "<?php echo htmlspecialchars($meta['name']); ?>",
       "image": "<?php echo BASE_URL; ?>/assets/images/logo.png",
       "url": "<?php echo BASE_URL; ?>",
-      "telephone": "+233244123456", 
-      "priceRange": "GH₵₵",
+      "telephone": "<?php echo htmlspecialchars($meta['phone']); ?>",
+      "priceRange": "<?php echo htmlspecialchars($meta['currency_symbol'] . $meta['currency_symbol']); ?>",
       "address": {
         "@type": "PostalAddress",
-        "streetAddress": "Airport West",
-        "addressLocality": "Accra",
-        "addressCountry": "GH"
+        <?php
+        // Split the stored "City Country" address back into parts for JSON-LD
+        $addrParts = array_map('trim', explode(' ', $meta['address'], 2));
+        $streetAddress = $addrParts[0] ?? '';
+        $locality      = $addrParts[0] ?? '';
+        $country       = $addrParts[1] ?? '';
+        ?>
+        "streetAddress": "<?php echo htmlspecialchars($streetAddress); ?>",
+        "addressLocality": "<?php echo htmlspecialchars($locality); ?>",
+        "addressCountry": "<?php echo htmlspecialchars($country); ?>"
       },
       "geo": {
         "@type": "GeoCoordinates",
-        "latitude": 5.6037,
-        "longitude": -0.1870
+        "latitude": <?php echo $meta['latitude']; ?>,
+        "longitude": <?php echo $meta['longitude']; ?>
       },
-      "servesCuisine": "Local, Continental"
+      "servesCuisine": "<?php echo htmlspecialchars($meta['cuisine']); ?>"
     }
   ]
 }
@@ -115,9 +125,8 @@ include 'includes/header.php';
     <div class="hero-carousel-container container">
         <div class="hero-slide active">
             <div class="hero-text">
-                <h1>Enjoy Our<br>Delicious Meal</h1>
-                <p>Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit. Aliqu diam amet diam et eos. Clita erat
-                    ipsum et lorem et sit, sed stet lorem sit clita duo justo magna dolore erat amet</p>
+                                <h1>Enjoy Our<br>Delicious Meal</h1>
+                <p><?php echo htmlspecialchars($meta['tagline']); ?></p>
                 <a href="menu.php" class="btn btn-hero">Book A Table</a>
             </div>
             <div class="hero-img">
@@ -174,7 +183,7 @@ include 'includes/header.php';
         </div>
         <div class="about-content">
             <h5 class="section-subtitle">About Us</h5>
-            <h1 class="section-title">Welcome to <i class="fas fa-utensils"></i> Restoran</h1>
+                        <h1 class="section-title">Welcome to <i class="fas fa-utensils"></i> <?php echo htmlspecialchars($meta['name']); ?></h1>
             <p>Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit.
                 Aliqu diam amet diam et eos erat ipsum et lorem et sit, sed stet lorem sit.</p>
             <p>Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit.

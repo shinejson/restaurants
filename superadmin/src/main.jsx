@@ -5,9 +5,14 @@ import App from './App';
 import { SessionProvider } from './lib/session';
 import './styles.css';
 
+// Vite's BASE_URL is the configured build base ("/superadmin/" for root
+// installs, "/restaurants/superadmin/" for sub-directory installs), which is
+// exactly the router's basename.
+const basename = import.meta.env.BASE_URL.replace(/\/+$/, '');
+
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename="/superadmin">
+    <BrowserRouter basename={basename}>
       <SessionProvider>
         <App />
       </SessionProvider>

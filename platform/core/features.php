@@ -15,6 +15,7 @@ use Resto\Billing\Features;
 use Resto\Billing\Plan;
 use Resto\Billing\PlanRepository;
 use Resto\Billing\UsageService;
+use Resto\Database\Connection;
 use Resto\Database\Manager;
 use Resto\Http\ApiException;
 use Resto\Support\Clock;
@@ -267,6 +268,29 @@ function current_tenant(): ?Tenant
 function tenant_id(): ?int
 {
     return Context::id();
+}
+
+/** Look a restaurant up by the code a visitor typed at sign-in. */
+function tenant_by_code(string $code): ?Tenant
+{
+    return (new TenantRepository())->findByCode($code);
+}
+
+/**
+ * Switch this request — and the visitor's session — to another restaurant.
+ *
+ * The sign-in screens use it once a code has identified the tenant, so the
+ * credentials are then checked against that restaurant's own database:
+ *
+ *     $conn = use_tenant($tenant);
+ */
+function use_tenant(Tenant $tenant): Connection
+{
+    Resolver::remember($tenant);
+    Context::set($tenant);
+    $GLOBALS['resto']['tenant'] = $tenant;
+
+    return Manager::tenant($tenant->toArray());
 }
 
 /** Is a plan feature switched on for this restaurant? */

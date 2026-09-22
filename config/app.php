@@ -52,6 +52,8 @@ return [
         // Sub-domains that belong to the platform itself, never to a tenant.
         'reserved_hosts'  => ['www', 'app', 'admin', 'api', 'superadmin', 'static', 'cdn', 'status', 'docs'],
         'session_timeout' => 1800,
+        // Characters in the per-tenant sign-in code (4-12).
+        'access_code_length' => (int) (getenv('ACCESS_CODE_LENGTH') ?: 5),
     ],
 
     'api' => [

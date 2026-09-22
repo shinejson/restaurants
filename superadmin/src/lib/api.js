@@ -8,6 +8,12 @@
 
 let csrfToken = null;
 
+// The console is always served from "<app root>/superadmin/", so the API root
+// is "<app root>/api/v1" — derived from Vite's BASE_URL, which keeps one build
+// shape working from the web root or any sub-directory (e.g. /restaurants/).
+const apiRoot = import.meta.env.BASE_URL.replace(/superadmin\/?$/, '');
+const API_BASE = import.meta.env.VITE_API_BASE || `${apiRoot}api/v1`;
+
 export const setCsrfToken = (token) => {
   csrfToken = token || null;
 };
@@ -31,7 +37,7 @@ async function request(method, path, body) {
 
   let response;
   try {
-    response = await fetch(`/api/v1${path}`, {
+    response = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
       credentials: 'same-origin',
