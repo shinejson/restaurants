@@ -219,118 +219,394 @@ body {
     object-fit: cover;
 }
 
-/* Footer */
+/* ==========================================================================
+   Main Footer — Modern, Responsive, Professional Design
+   ========================================================================== */
 .main-footer {
-    background: #0F172B; /* Dark Blue/Black */
-    color: #F1F8FF;
-    padding-top: 5rem;
+    background: linear-gradient(180deg, #0e1726 0%, #070d18 100%);
+    color: #e2e8f0;
+    padding-top: 4.5rem;
     margin-top: 5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
 }
 
 .footer-content {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: 1.3fr 1.1fr 1fr 1.2fr;
     gap: 3rem;
-    padding-bottom: 4rem;
+    padding-bottom: 3.5rem;
+}
+
+@media (max-width: 992px) {
+    .footer-content {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2.5rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
 }
 
 .footer-section h3 {
-    color: var(--primary-color);
-    font-family: 'Nunito', sans-serif;
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
+    color: #ffffff;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 1.35rem;
     position: relative;
     display: inline-block;
+    padding-bottom: 0.5rem;
+    letter-spacing: 0.02em;
 }
 
 .footer-section h3::after {
     content: "";
-    width: 45px; 
-    height: 2px;
-    background: var(--primary-color);
+    width: 32px;
+    height: 3px;
+    background: var(--primary-color, #ff6b35);
+    border-radius: 2px;
     position: absolute;
     left: 0;
-    bottom: -5px;
+    bottom: 0;
 }
 
-.footer-section p {
-    color: #F1F8FF;
+/* 1. Brand Section */
+.footer-brand .footer-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    text-decoration: none;
     margin-bottom: 1rem;
-    line-height: 1.8;
+    transition: opacity 0.2s ease;
+}
+
+.footer-brand .footer-logo:hover {
+    opacity: 0.9;
+}
+
+.footer-logo-img {
+    max-height: 40px;
+    max-width: 140px;
+    object-fit: contain;
+}
+
+.footer-logo-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(255, 107, 53, 0.15);
+    border: 1px solid rgba(255, 107, 53, 0.3);
+    color: var(--primary-color, #ff6b35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.footer-brand-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+}
+
+.footer-tagline {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 1.35rem;
+}
+
+.social-links {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
 }
 
 .social-links a {
     display: inline-flex;
-    justify-content: center;
     align-items: center;
-    width: 35px;
-    height: 35px;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.5);
-    color: #fff;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    margin-right: 0.5rem;
-    transition: 0.3s;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
     text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.25s ease;
 }
 
 .social-links a:hover {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
+    background: var(--primary-color, #ff6b35);
+    border-color: var(--primary-color, #ff6b35);
+    color: #ffffff;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.35);
 }
 
+/* 2. Opening Hours */
+.opening-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 0.85rem;
+}
+
+.opening-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.55rem 0;
+    font-size: 0.86rem;
+}
+
+.opening-item:not(:last-child) {
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.opening-item .day {
+    color: #cbd5e1;
+    font-weight: 500;
+}
+
+.opening-item .time {
+    color: var(--primary-color, #ff6b35);
+    font-weight: 600;
+}
+
+.service-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(40, 167, 69, 0.12);
+    border: 1px solid rgba(40, 167, 69, 0.25);
+    color: #86efac;
+    padding: 0.35rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.service-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 6px #22c55e;
+}
+
+/* 3. Quick Links */
 .footer-links ul {
     list-style: none;
     padding: 0;
+    margin: 0;
 }
 
 .footer-links li {
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.65rem;
 }
 
 .footer-links a {
-    color: #F1F8FF;
+    color: #94a3b8;
     text-decoration: none;
-    transition: 0.3s;
-    display: inline-block;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.footer-links a i {
+    font-size: 0.7rem;
+    color: var(--primary-color, #ff6b35);
+    transition: transform 0.2s ease;
 }
 
 .footer-links a:hover {
-    color: var(--primary-color);
-    transform: translateX(5px);
+    color: #ffffff;
+    transform: translateX(4px);
 }
 
-/* Newsletter */
-.newsletter-form {
-    position: relative;
-    max-width: 400px;
-    margin-top: 1.5rem;
+.footer-links a:hover i {
+    transform: translateX(2px);
 }
 
-.newsletter-form input {
-    width: 100%;
-    padding: 1rem;
-    padding-right: 4rem;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.1); /* Search and Filter (Redesign) */
+/* 4. Contact & Newsletter */
+.contact-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.35rem;
 }
 
-.newsletter-form input::placeholder {
-    color: #aaa;
+.contact-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    color: #94a3b8;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    text-decoration: none;
+    transition: color 0.2s ease;
 }
 
-.newsletter-form button {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    bottom: 5px;
+.contact-item i {
+    color: var(--primary-color, #ff6b35);
+    font-size: 0.95rem;
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+a.contact-item:hover {
+    color: #ffffff;
+}
+
+.newsletter-wrap {
+    margin-top: 0.75rem;
+}
+
+.newsletter-box {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50px;
+    padding: 3px 3px 3px 14px;
+    transition: all 0.25s ease;
+}
+
+.newsletter-box:focus-within {
+    border-color: var(--primary-color, #ff6b35);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
+}
+
+.newsletter-box input {
+    flex: 1;
+    background: transparent;
     border: none;
-    background: var(--primary-color);
-    color: white;
-    padding: 0 1rem;
-    border-radius: 4px;
+    outline: none;
+    color: #ffffff;
+    font-size: 0.86rem;
+    padding: 6px 0;
+}
+
+.newsletter-box input::placeholder {
+    color: #64748b;
+}
+
+.newsletter-box button {
+    background: var(--primary-color, #ff6b35);
+    color: #ffffff;
+    border: none;
+    border-radius: 50px;
+    padding: 7px 18px;
+    font-size: 0.82rem;
+    font-weight: 700;
     cursor: pointer;
-    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.newsletter-box button:hover {
+    background: #e85a26;
+    transform: scale(1.02);
+}
+
+/* Footer Bottom Bar */
+.footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1.5rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.footer-bottom p {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.footer-bottom p strong {
+    color: #cbd5e1;
+}
+
+.footer-bottom-links {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.84rem;
+}
+
+.footer-bottom-links a {
+    color: #94a3b8;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.footer-bottom-links a:hover {
+    color: #ffffff;
+}
+
+.footer-bottom-links .sep {
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.powered-badge {
+    color: #64748b;
+    font-size: 0.82rem;
+}
+
+.powered-badge span {
+    color: var(--primary-color, #ff6b35);
+    font-weight: 600;
+}
+
+/* Back to Top Floating Button */
+.back-to-top {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: var(--primary-color, #ff6b35);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition: all 0.3s ease;
+    z-index: 999;
+}
+
+.back-to-top.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.back-to-top:hover {
+    background: #e85a26;
+    color: #ffffff;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(255, 107, 53, 0.45);
 }
 
 .filter-section {
@@ -1501,59 +1777,7 @@ body {
     }
 }
 
-/* Footer Enhancements */
-.footer-logo {
-    display: block;
-    margin-bottom: 1rem;
-    font-size: 1.5rem;
-}
 
-.footer-logo i {
-    color: var(--primary-color);
-}
-
-.footer-logo span:first-of-type {
-    color: var(--primary-color);
-}
-
-.footer-logo span:last-of-type {
-    color: white;
-}
-
-.opening-day {
-    color: #fff;
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
-}
-
-.footer-section p i {
-    color: var(--primary-color);
-    margin-right: 10px;
-}
-
-.footer-links li {
-    margin-bottom: 0.5rem;
-}
-
-.footer-links li a {
-    color: #bbb;
-    text-decoration: none;
-    transition: 0.3s;
-}
-
-.footer-links li a:hover {
-    color: var(--primary-color);
-    padding-left: 5px;
-}
-
-.footer-links li::before {
-    content: "\f054";
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-    font-size: 0.7rem;
-    color: var(--primary-color);
-    margin-right: 8px;
-}
 
 /* Profile Page Styles */
 .profile-container {

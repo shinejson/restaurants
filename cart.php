@@ -71,7 +71,7 @@ include 'includes/header.php';
             <i class="fas fa-shopping-basket"></i>
             <h3>Your cart is empty</h3>
             <p>Looks like you haven't added anything to your cart yet.</p>
-            <a href="<?php echo BASE_URL; ?>/index.php" class="btn btn-hero">
+            <a href="<?php echo tenant_url('index.php'); ?>" class="btn btn-hero">
                 Browse Menu
             </a>
         </div>
@@ -124,10 +124,10 @@ include 'includes/header.php';
             </table>
 
             <div class="cart-footer">
-                <a href="<?php echo BASE_URL; ?>/index.php" class="back-link">
+                <a href="<?php echo tenant_url('index.php'); ?>" class="back-link">
                     <i class="fas fa-arrow-left"></i> Continue Shopping
                 </a>
-                <a href="<?php echo BASE_URL; ?>/checkout.php" class="btn btn-hero">
+                <a href="<?php echo tenant_url('checkout.php'); ?>" class="btn btn-hero">
                     Proceed to Checkout <i class="fas fa-arrow-right"></i>
                 </a>
             </div>

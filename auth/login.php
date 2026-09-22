@@ -5,8 +5,14 @@ require_once '../includes/functions.php';
 
 // Redirect if already logged in as customer
 if (isset($_SESSION['user_id']) && ($_SESSION['user_role'] ?? '') === 'customer') {
-    header('Location: ../profile.php');
+    header('Location: ' . tenant_url('profile.php'));
     exit();
+}
+
+// Support redirect parameter
+$redirect = clean_input($_GET['redirect'] ?? $_POST['redirect'] ?? '');
+if (empty($redirect) && !empty($_SESSION['redirect_url'])) {
+    $redirect = $_SESSION['redirect_url'];
 }
 
 // Generate CSRF token if not exists
@@ -33,13 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid security token';
     } else {
         // Check user credentials
-        // Fixed: password_hash -> password, removed is_active (doesn't exist in schema)
         $stmt = $conn->prepare("SELECT id, username, email, password FROM customers WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if ($user) {
-            // Updated to use the correct password column
             if (password_verify($password, $user['password'])) {
                 // Regenerate session ID for security
                 session_regenerate_id(true);
@@ -50,14 +54,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['email'] = $user['email'];
                 $_SESSION['user_role'] = 'customer';
 
-                // Redirect to home
-                header('Location: ../index.php');
+                // Redirect to target or home
+                if (!empty($redirect)) {
+                    unset($_SESSION['redirect_url']);
+                    if (str_starts_with($redirect, 'http://') || str_starts_with($redirect, 'https://')) {
+                        header('Location: ' . $redirect);
+                    } else {
+                        header('Location: ' . tenant_url(ltrim($redirect, '/')));
+                    }
+                    exit();
+                }
+
+                header('Location: ' . tenant_url('index.php'));
                 exit();
             } else {
-                $error = 'Invalid email or password';
+                $error = 'Invalid email or password. Please verify your credentials or register for an account.';
             }
         } else {
-            $error = 'Invalid email or password';
+            $error = 'Invalid email or password. If you have not registered with this restaurant yet, please click "Sign up here" below.';
         }
     }
 }
@@ -193,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="auth-header">
             <i class="fas fa-sign-in-alt"></i>
             <h1>Welcome Back</h1>
-            <p>Sign in to your account to continue</p>
+            <p>Sign in to <strong><?php echo htmlspecialchars(get_setting('company_name', 'our restaurant')); ?></strong></p>
         </div>
 
         <?php if ($error): ?>
@@ -215,8 +229,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
+        <?php if (function_exists('current_tenant') && current_tenant()?->slug() === 'demo'): ?>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.85rem; color: #166534; line-height: 1.4;">
+                <div style="font-weight: 700; margin-bottom: 0.2rem;"><i class="fas fa-flask"></i> Demo Customer Credentials:</div>
+                Email: <code>ama.boateng@example.com</code> &bull; Password: <code>demo1234</code><br>
+                <a href="#" id="fillDemoCustomer" style="color: #15803d; font-weight: 600; text-decoration: underline; display: inline-block; margin-top: 0.3rem;">
+                    &rarr; Click here to auto-fill demo customer
+                </a>
+            </div>
+        <?php endif; ?>
+
         <form method="POST" action="">
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+            <?php if (!empty($redirect)): ?>
+                <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($redirect); ?>">
+            <?php endif; ?>
 
             <div class="form-group">
                 <label for="email"><i class="fas fa-envelope"></i> Email Address</label>
@@ -250,7 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div style="display: grid; gap: 1rem;">
                 <!-- Google Login -->
-                <a href="<?php echo BASE_URL; ?>/auth/google_login.php" class="btn-social"
+                <a href="<?php echo tenant_url('auth/google_login.php'); ?>" class="btn-social"
                     style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0.8rem; background: white; border: 1px solid #ddd; border-radius: 4px; color: #444; font-weight: 500; text-decoration: none; transition: all 0.2s;">
                     <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google"
                         style="width: 20px; height: 20px;">
@@ -258,7 +285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </a>
 
                 <!-- Apple Login -->
-                <a href="<?php echo BASE_URL; ?>/auth/apple_login.php" class="btn-social"
+                <a href="<?php echo tenant_url('auth/apple_login.php'); ?>" class="btn-social"
                     style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0.8rem; background: #000; border: 1px solid #000; border-radius: 4px; color: white; font-weight: 500; text-decoration: none; transition: all 0.2s;">
                     <i class="fab fa-apple" style="font-size: 1.2rem;"></i>
                     Continue with iPhone
@@ -267,8 +294,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
 
         <div class="auth-links">
-            <p>Don't have an account? <a href="register.php">Sign up here</a></p>
-            <p><a href="forgot_password.php">Forgot your password?</a></p>
+            <p>Don't have an account? <a href="<?php echo tenant_url('auth/register.php' . (!empty($redirect) ? '?redirect=' . urlencode($redirect) : '')); ?>">Sign up here</a></p>
+            <p><a href="<?php echo tenant_url('auth/forgot_password.php'); ?>">Forgot your password?</a></p>
         </div>
 
     </div>
@@ -279,6 +306,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>
     // Focus on email field
     document.getElementById('email').focus();
+
+    const fillDemo = document.getElementById('fillDemoCustomer');
+    if (fillDemo) {
+        fillDemo.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('email').value = 'ama.boateng@example.com';
+            document.getElementById('password').value = 'demo1234';
+        });
+    }
 </script>
 </body>
 

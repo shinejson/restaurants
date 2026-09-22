@@ -3,7 +3,8 @@ session_start();
 
 // Check if user is logged in and is a customer
 if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'customer') {
-    header('Location: /auth/login.php');
+    require_once __DIR__ . '/../config/db.php';
+    header('Location: ' . tenant_url('auth/login.php'));
     exit();
 }
 

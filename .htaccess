@@ -17,7 +17,30 @@ AddCharset UTF-8 .js .mjs .css .json .svg .xml .map
     # Public JSON API consumed by the superadmin console and integrations.
     RewriteRule ^api/(.*)$ platform/api/index.php [QSA,L]
 
-    # Pretty URLs for the storefront.
+    # -------------------------------------------------------------------------
+    # Unique platform routing per tenant: /t/<slug-or-code>/...
+    # -------------------------------------------------------------------------
+    # Static assets requests relative to /t/<tenant>/
+    RewriteRule ^t/[^/]+/assets/(.*)$ assets/$1 [L]
+    RewriteRule ^t/[^/]+/img/(.*)$ img/$1 [L]
+
+    # Admin access routes
+    RewriteRule ^t/([a-zA-Z0-9_-]+)/admin/login\.php/?$ admin/login.php?__tenant=$1 [QSA,L]
+    RewriteRule ^t/([a-zA-Z0-9_-]+)/admin/?$ admin/login.php?__tenant=$1 [QSA,L]
+    RewriteRule ^t/([a-zA-Z0-9_-]+)/admin/(.+)$ admin/$2?__tenant=$1 [QSA,L]
+
+    # Auth, AJAX, Orders, Profile
+    RewriteRule ^t/([a-zA-Z0-9_-]+)/auth/(.+)$ auth/$2?__tenant=$1 [QSA,L]
+    RewriteRule ^t/([a-zA-Z0-9_-]+)/ajax/(.+)$ ajax/$2?__tenant=$1 [QSA,L]
+    RewriteRule ^t/([a-zA-Z0-9_-]+)/orders/(.+)$ orders/$2?__tenant=$1 [QSA,L]
+    RewriteRule ^t/([a-zA-Z0-9_-]+)/profile/(.+)$ profile/$2?__tenant=$1 [QSA,L]
+
+    # Storefront pages under /t/<tenant>/
+    RewriteRule ^t/([a-zA-Z0-9_-]+)/?$ index.php?__tenant=$1 [QSA,L]
+    RewriteRule ^t/([a-zA-Z0-9_-]+)/(index|menu|about|contact|events|event_booking|cart|checkout|orders|profile|customer_order|order-confirmation)/?$ $2.php?__tenant=$1 [QSA,L]
+    RewriteRule ^t/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+\.php)$ $2?__tenant=$1 [QSA,L]
+
+    # Pretty URLs for the default storefront.
     RewriteRule ^(index|menu|about|contact|events|event_booking|cart|checkout|orders)/?$ $1.php [QSA,L]
 
     # Sub-directory installs (e.g. https://host/restaurants/…) keep working:

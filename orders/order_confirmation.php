@@ -247,11 +247,11 @@ foreach ($tax_grouped as $tg) {
 
             <!-- Actions -->
             <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <a href="<?php echo BASE_URL; ?>/index.php" class="btn-primary"
+                <a href="<?php echo tenant_url('index.php'); ?>" class="btn-primary"
                     style="flex: 1; min-width: 200px; background: var(--primary-color); color: white; text-align: center; padding: 1.2rem; border-radius: 12px; text-decoration: none; font-weight: 700; transition: all 0.3s; box-shadow: 0 4px 15px rgba(255,107,53,0.3);">
                     Return to Home
                 </a>
-                <a href="<?php echo BASE_URL; ?>/profile.php?tab=orders" class="btn-secondary"
+                <a href="<?php echo tenant_url('profile.php?tab=orders'); ?>" class="btn-secondary"
                     style="flex: 1; min-width: 200px; background: #f8f9fa; color: #333; text-align: center; padding: 1.2rem; border-radius: 12px; text-decoration: none; font-weight: 700; border: 1px solid #e0e0e0;">
                     Track All My Orders
                 </a>

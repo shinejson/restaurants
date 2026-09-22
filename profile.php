@@ -5,7 +5,7 @@ require_once 'includes/functions.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header('Location: auth/login.php');
+    header('Location: ' . tenant_url('auth/login.php?redirect=' . urlencode('profile.php')));
     exit();
 }
 
@@ -278,10 +278,10 @@ include 'includes/header.php';
                                 <td><?php echo format_currency($order['total']); ?></td>
                                 <td>
                                     <div class="action-buttons">
-                                        <a href="orders/order_confirmation.php?ref=<?php echo $order['order_reference']; ?>"
-                                            class="btn-action btn-view">
-                                            <i class="fas fa-eye"></i> View
-                                        </a>
+                                         <a href="<?php echo tenant_url('orders/order_confirmation.php?ref=' . urlencode($order['order_reference'])); ?>"
+                                             class="btn-action btn-view">
+                                             <i class="fas fa-eye"></i> View
+                                         </a>
                                         <button class="btn-action btn-reorder reorder-btn"
                                             data-order-id="<?php echo $order['id']; ?>">
                                             <i class="fas fa-redo"></i> Reorder
@@ -554,7 +554,7 @@ include 'includes/header.php';
             <h2>Ready to leave?</h2>
             <p>Are you sure you want to log out of your account?</p>
             <div class="logout-actions">
-                <a href="auth/logout.php" class="btn btn-hero btn-danger">
+                <a href="<?php echo tenant_url('auth/logout.php'); ?>" class="btn btn-hero btn-danger">
                     Yes, Logout
                 </a>
                 <button class="btn btn-secondary" onclick="document.querySelector('[data-tab=profile]').click()">

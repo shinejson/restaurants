@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import { Spinner } from './components/ui';
@@ -15,6 +16,14 @@ import Team from './pages/Team';
 import Tenants from './pages/Tenants';
 import TenantDetail from './pages/TenantDetail';
 import Usage from './pages/Usage';
+
+function LogoutRoute() {
+  const { logout } = useSession();
+  useEffect(() => {
+    logout();
+  }, [logout]);
+  return <Spinner label="Signing out…" />;
+}
 
 export default function App() {
   const { user, loading } = useSession();
@@ -36,6 +45,7 @@ export default function App() {
         <Route path="team" element={<Team />} />
         <Route path="settings" element={<Settings />} />
         <Route path="system" element={<System />} />
+        <Route path="logout" element={<LogoutRoute />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

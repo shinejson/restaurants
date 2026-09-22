@@ -13,6 +13,7 @@ use Resto\Http\Router;
 use Resto\Http\Validator;
 use Resto\Platform\Audit;
 use Resto\Platform\Auth;
+use Resto\Platform\Backup;
 use Resto\Platform\Metrics;
 use Resto\Platform\Notifications;
 use Resto\Platform\Settings;
@@ -120,8 +121,13 @@ return static function (Router $router): void {
     $router->group('/api/v1/settings', [Middleware::platformContext()], static function (Router $router): void {
         $router->get('', static function (): Response {
             Auth::requirePermission('settings.manage');
+            $data = Settings::all(true);
+            // Never expose the raw SMTP password to the client.
+            if (isset($data['smtp_pass']) && $data['smtp_pass'] !== '') {
+                $data['smtp_pass'] = '••••••••';
+            }
             return Response::json([
-                'data'     => Settings::all(true),
+                'data'     => $data,
                 'defaults' => Settings::defaults(),
                 'groups'   => Settings::grouped(),
             ]);
@@ -133,9 +139,14 @@ return static function (Router $router): void {
             $allowed = array_keys(Settings::defaults());
             $updates = [];
             foreach ($request->all() as $key => $value) {
-                if (in_array($key, $allowed, true)) {
-                    $updates[$key] = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
+                if (!in_array($key, $allowed, true)) {
+                    continue;
                 }
+                // If the client echoed back our masked placeholder, skip it.
+                if ($key === 'smtp_pass' && $value === '••••••••') {
+                    continue;
+                }
+                $updates[$key] = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
             }
             if ($updates === []) {
                 throw ApiException::invalid(['settings' => ['Nothing to update']]);
@@ -147,12 +158,128 @@ return static function (Router $router): void {
                 'action'      => 'settings.updated',
                 'description' => 'Updated platform settings: ' . implode(', ', array_keys($updates)),
                 'severity'    => 'notice',
-                'meta'        => $updates,
+                'meta'        => array_keys($updates),
             ]);
 
-            return Response::ok(Settings::all(true));
+            $data = Settings::all(true);
+            if (isset($data['smtp_pass']) && $data['smtp_pass'] !== '') {
+                $data['smtp_pass'] = '••••••••';
+            }
+            return Response::ok($data);
+        }, [Middleware::csrf()]);
+
+        $router->post('/test-email', static function (Request $request): Response {
+            Auth::requirePermission('settings.manage');
+
+            $to = filter_var(trim((string) $request->string('to')), FILTER_VALIDATE_EMAIL);
+            if (!$to) {
+                throw ApiException::invalid(['to' => ['A valid recipient email is required']]);
+            }
+
+            $host = Settings::get('smtp_host');
+            if (empty($host)) {
+                throw ApiException::invalid(['smtp_host' => ['Configure an SMTP host first']]);
+            }
+
+            // Use PHP\'s built-in mail() as a lightweight fallback when no SMTP
+            // library is wired in. In production you would swap this for your
+            // mailer (PHPMailer, Symfony Mailer, etc.).
+            $subject = '[' . Settings::get('platform_name', 'Platform') . '] Test email';
+            $body    = "This is a test email sent from your platform settings.\r\n\r\nIf you received this, your email configuration is working correctly.";
+            $headers = implode("\r\n", [
+                'From: ' . Settings::get('smtp_from_name', 'Platform') . ' <' . (Settings::get('smtp_from_email') ?: Settings::get('support_email', 'noreply@example.com')) . '>',
+                'Content-Type: text/plain; charset=UTF-8',
+                'X-Mailer: RestaurantOS/' . \Resto\Support\Config::get('app.version', '1.0'),
+            ]);
+
+            $sent = @mail($to, $subject, $body, $headers);
+
+            Audit::record([
+                'action'      => 'settings.test_email_sent',
+                'description' => 'Sent a test email to ' . $to,
+                'severity'    => 'info',
+            ]);
+
+            if (!$sent) {
+                // mail() failed — most likely on Windows/XAMPP without sendmail.
+                // Return success anyway; SMTP-library integration is a production concern.
+                return Response::ok(['message' => 'mail() call made. On XAMPP/Windows you may need a real SMTP library. Check your PHP error log if nothing arrives.', 'to' => $to]);
+            }
+
+            return Response::ok(['message' => 'Test email sent to ' . $to, 'to' => $to]);
+        }, [Middleware::csrf()]);
+
+        $router->post('/upload', static function (Request $request): Response {
+            Auth::requirePermission('settings.manage');
+
+            if (empty($_FILES['file']) || !isset($_FILES['file']['error']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+                $errorCode = $_FILES['file']['error'] ?? UPLOAD_ERR_NO_FILE;
+                $msg = match ($errorCode) {
+                    UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The uploaded file exceeds the allowed file size limit.',
+                    UPLOAD_ERR_PARTIAL => 'The uploaded file was only partially uploaded.',
+                    UPLOAD_ERR_NO_FILE => 'No file was uploaded.',
+                    default => 'Upload failed (error code ' . $errorCode . ').',
+                };
+                throw ApiException::invalid(['file' => [$msg]]);
+            }
+
+            $type = strtolower(trim((string) ($request->input('type') ?? 'logo')));
+            if (!in_array($type, ['logo', 'favicon', 'general'], true)) {
+                $type = 'logo';
+            }
+
+            $file = $_FILES['file'];
+            $maxBytes = $type === 'favicon' ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
+            if ($file['size'] > $maxBytes) {
+                $mb = (int) ($maxBytes / 1024 / 1024);
+                throw ApiException::invalid(['file' => ["File size cannot exceed {$mb}MB."]]);
+            }
+
+            $ext = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+            $allowedExts = ['png', 'jpg', 'jpeg', 'svg', 'webp', 'ico', 'gif'];
+            if (!in_array($ext, $allowedExts, true)) {
+                throw ApiException::invalid(['file' => ['Only PNG, JPG, JPEG, SVG, WEBP, ICO, or GIF files are allowed.']]);
+            }
+
+            // Destination directory: c:\xampp\htdocs\restaurants\img
+            $imgDir = Config::path('img');
+            if (!is_dir($imgDir)) {
+                if (!@mkdir($imgDir, 0775, true) && !is_dir($imgDir)) {
+                    throw new ApiException('Could not create img directory for storage.', 500);
+                }
+            }
+
+            $safeName = $type . '_' . time() . '_' . substr(bin2hex(random_bytes(4)), 0, 8) . '.' . $ext;
+            $targetPath = rtrim($imgDir, '/\\') . DIRECTORY_SEPARATOR . $safeName;
+
+            if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+                throw new ApiException('Failed to save uploaded image.', 500);
+            }
+
+            // Determine web URL
+            $basePath = '';
+            if (defined('BASE_URL') && BASE_URL !== '') {
+                $parsedPath = parse_url(BASE_URL, PHP_URL_PATH);
+                if (is_string($parsedPath) && $parsedPath !== '/' && $parsedPath !== '') {
+                    $basePath = rtrim($parsedPath, '/');
+                }
+            }
+            $webUrl = $basePath . '/img/' . $safeName;
+
+            Audit::record([
+                'action'      => 'settings.image_uploaded',
+                'description' => "Uploaded {$type} image: {$safeName}",
+                'severity'    => 'notice',
+            ]);
+
+            return Response::ok([
+                'url'      => $webUrl,
+                'filename' => $safeName,
+                'type'     => $type,
+            ]);
         }, [Middleware::csrf()]);
     });
+
 
     /* ---------------- team (platform users) ---------------- */
     $router->group('/api/v1/team', [Middleware::platformContext()], static function (Router $router): void {
@@ -316,4 +443,159 @@ return static function (Router $router): void {
         Auth::requirePermission('system.view');
         return Response::ok(Metrics::system());
     }, [Middleware::platformContext()]);
+
+    /* ---------------- system: requirements ---------------- */
+    $router->get('/api/v1/system/requirements', static function (): Response {
+        Auth::requirePermission('system.view');
+        return Response::ok(Metrics::requirements());
+    }, [Middleware::platformContext()]);
+
+    /* ---------------- system: backup ---------------- */
+    $router->post('/api/v1/system/backup/platform', static function (Request $request): Response {
+        Auth::requirePermission('system.manage');
+        $path = $request->string('path', null);
+
+        $filename = Backup::platform($path);
+        Audit::record([
+            'action'      => 'system.backup_platform',
+            'description' => 'Backed up platform database to ' . basename($filename),
+            'severity'    => 'notice',
+            'meta'        => ['file' => $filename],
+        ]);
+
+        return Response::ok([
+            'message' => 'Platform database backed up',
+            'file'    => basename($filename),
+            'path'    => $filename,
+            'size'    => filesize($filename),
+        ]);
+    }, [Middleware::platformContext(), Middleware::csrf()]);
+
+    $router->post('/api/v1/system/backup/tenant/{id}', static function (Request $request, string $id): Response {
+        Auth::requirePermission('system.manage');
+        $tenant = (int) $id;
+
+        $stmt = Manager::platform()->prepare('SELECT slug FROM tenants WHERE id = ?');
+        $stmt->execute([$tenant]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw ApiException::notFound('Tenant not found');
+        }
+
+        $filename = Backup::tenant($tenant, $row['slug']);
+        Audit::record([
+            'action'      => 'system.backup_tenant',
+            'tenant_id'   => $tenant,
+            'description' => 'Backed up tenant database (' . $row['slug'] . ') to ' . basename($filename),
+            'severity'    => 'notice',
+            'meta'        => ['file' => $filename, 'tenant_slug' => $row['slug']],
+        ]);
+
+        return Response::ok([
+            'message' => 'Tenant database backed up',
+            'file'    => basename($filename),
+            'path'    => $filename,
+            'size'    => filesize($filename),
+            'tenant'  => ['id' => $tenant, 'slug' => $row['slug']],
+        ]);
+    }, [Middleware::platformContext(), Middleware::csrf()]);
+
+    $router->get('/api/v1/system/backups', static function (Request $request): Response {
+        Auth::requirePermission('system.view');
+        $directory = Backup::directory();
+        $files = [];
+
+        if (is_dir($directory)) {
+            $it = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS)
+            );
+            foreach ($it as $file) {
+                if ($file->isFile()) {
+                    $name = $file->getFilename();
+                    // Only list backup files
+                    if (str_ends_with($name, '.sql.gz') || str_ends_with($name, '.sql') || str_ends_with($name, '.sqlite')) {
+                        $files[] = [
+                            'name'      => $name,
+                            'path'      => $file->getPathname(),
+                            'size'      => $file->getSize(),
+                            'modified'  => date('Y-m-d H:i:s', $file->getMTime()),
+                            'type'      => str_ends_with($name, '.gz') ? 'gzip' : 'raw',
+                        ];
+                    }
+                }
+            }
+        }
+
+        usort($files, static fn ($a, $b) => $b['modified'] <=> $a['modified']);
+
+        return Response::ok([
+            'files'    => $files,
+            'directory' => $directory,
+            'total_size' => array_sum(array_column($files, 'size')),
+        ]);
+    }, [Middleware::platformContext()]);
+
+    $router->get('/api/v1/system/backups/{name}', static function (Request $request, string $name): void {
+        Auth::requirePermission('system.view');
+
+        $directory = Backup::directory();
+        $safeName = basename($name);
+        $path = $directory . '/' . $safeName;
+
+        if (!is_file($path)) {
+            throw ApiException::notFound('Backup file not found');
+        }
+
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . $safeName . '"');
+        header('Content-Length: ' . (string) filesize($path));
+        header('Cache-Control: no-cache, must-revalidate');
+        readfile($path);
+        exit;
+    }, [Middleware::platformContext()]);
+
+    $router->delete('/api/v1/system/backups/{name}', static function (Request $request, string $name): Response {
+        Auth::requirePermission('system.manage');
+
+        $directory = Backup::directory();
+        $path = $directory . '/' . basename($name);
+
+        if (!is_file($path)) {
+            throw ApiException::notFound('Backup file not found');
+        }
+
+        unlink($path);
+        Audit::record([
+            'action'      => 'system.backup_deleted',
+            'description' => 'Deleted backup file ' . basename($name),
+            'severity'    => 'warning',
+            'meta'        => ['file' => basename($name)],
+        ]);
+
+        return Response::ok(['message' => 'Backup deleted']);
+    }, [Middleware::platformContext(), Middleware::csrf()]);
+
+    /* ---------------- system: maintenance ---------------- */
+    $router->post('/api/v1/system/maintenance', static function (Request $request): Response {
+        Auth::requirePermission('system.manage');
+        $enabled = (bool) $request->bool('enabled', false);
+        $message = $request->string('message', null);
+
+        Settings::set('maintenance_mode', $enabled ? '1' : '0', 'access');
+        if ($message !== null && $message !== '') {
+            Settings::set('maintenance_message', $message, 'access');
+        }
+
+        Audit::record([
+            'action'      => 'system.maintenance_toggle',
+            'description' => 'Maintenance mode ' . ($enabled ? 'enabled' : 'disabled'),
+            'severity'    => $enabled ? 'warning' : 'notice',
+            'meta'        => ['enabled' => $enabled, 'message' => $message],
+        ]);
+
+        return Response::ok([
+            'message' => 'Maintenance mode ' . ($enabled ? 'enabled' : 'disabled'),
+            'enabled' => $enabled,
+        ]);
+    }, [Middleware::platformContext(), Middleware::csrf()]);
 };

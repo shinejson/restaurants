@@ -181,6 +181,22 @@ final class Auth
         if (!$id) {
             return null;
         }
+
+        $token = $_SESSION['platform_session_token'] ?? null;
+        if ($token) {
+            $sessStmt = Manager::platform()->prepare(
+                'SELECT id, expires_at FROM platform_sessions WHERE token_hash = ? AND revoked_at IS NULL LIMIT 1'
+            );
+            $sessStmt->execute([hash('sha256', (string) $token)]);
+            $sess = $sessStmt->fetch(\PDO::FETCH_ASSOC);
+
+            if (!$sess || (isset($sess['expires_at']) && $sess['expires_at'] <= Clock::now())) {
+                unset($_SESSION['platform_user_id'], $_SESSION['platform_session_token'], $_SESSION['platform_csrf']);
+                self::$cached = null;
+                return null;
+            }
+        }
+
         $stmt = Manager::platform()->prepare('SELECT * FROM platform_users WHERE id = ? AND status = ?');
         $stmt->execute([(int) $id, 'active']);
         $user = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -311,25 +327,47 @@ final class Auth
 
     public static function logout(): void
     {
-        $token = $_SESSION['platform_session_token'] ?? null;
-        if ($token) {
-            Manager::platform()
-                ->prepare('UPDATE platform_sessions SET revoked_at = ? WHERE token_hash = ?')
-                ->execute([Clock::now(), hash('sha256', $token)]);
-        }
+        $userId   = self::id();
+        $userName = self::$cached['name'] ?? null;
+        $token    = $_SESSION['platform_session_token'] ?? null;
 
-        if (self::id()) {
-            Audit::record([
-                'action'      => 'auth.logout',
-                'actor_type'  => 'platform',
-                'actor_id'    => self::id(),
-                'actor_name'  => self::user()['name'] ?? null,
-                'description' => 'Signed out',
-            ]);
-        }
-
-        unset($_SESSION['platform_user_id'], $_SESSION['platform_session_token'], $_SESSION['platform_csrf']);
+        unset(
+            $_SESSION['platform_user_id'],
+            $_SESSION['platform_session_token'],
+            $_SESSION['platform_csrf']
+        );
         self::$cached = null;
+
+        if ($token) {
+            try {
+                Manager::platform()
+                    ->prepare('UPDATE platform_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL')
+                    ->execute([Clock::now(), hash('sha256', (string) $token)]);
+            } catch (\Throwable $e) {
+                // Ignore DB error so session destruction is never blocked
+            }
+        }
+
+        if ($userId) {
+            try {
+                Audit::record([
+                    'action'      => 'auth.logout',
+                    'actor_type'  => 'platform',
+                    'actor_id'    => $userId,
+                    'actor_name'  => $userName,
+                    'description' => 'Signed out',
+                ]);
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if (self::isImpersonating()) {
+            self::stopImpersonation();
+        }
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
     }
 
     /** Sessions listed in the console's security panel. */
@@ -350,7 +388,14 @@ final class Auth
 
     public static function revokeSession(int $id): void
     {
-        Manager::platform()->prepare('UPDATE platform_sessions SET revoked_at = ? WHERE id = ?')->execute([Clock::now(), $id]);
+        $current = $_SESSION['platform_session_token'] ?? null;
+        $currentHash = $current ? hash('sha256', (string) $current) : null;
+
+        $stmt = Manager::platform()->prepare('SELECT token_hash FROM platform_sessions WHERE id = ?');
+        $stmt->execute([$id]);
+        $targetHash = $stmt->fetchColumn();
+
+        Manager::platform()->prepare('UPDATE platform_sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL')->execute([Clock::now(), $id]);
         Audit::record([
             'action'      => 'auth.session_revoked',
             'actor_type'  => 'platform',
@@ -361,6 +406,32 @@ final class Auth
             'description' => 'Revoked a session',
             'severity'    => 'notice',
         ]);
+
+        if ($currentHash && $targetHash && hash_equals((string) $targetHash, (string) $currentHash)) {
+            self::logout();
+        }
+    }
+
+    public static function revokeOtherSessions(int $userId, ?string $currentToken = null): int
+    {
+        $currentToken ??= ($_SESSION['platform_session_token'] ?? null);
+        $hash = $currentToken ? hash('sha256', (string) $currentToken) : '';
+
+        $stmt = Manager::platform()->prepare(
+            'UPDATE platform_sessions SET revoked_at = ? WHERE user_id = ? AND token_hash != ? AND revoked_at IS NULL'
+        );
+        $stmt->execute([Clock::now(), $userId, $hash]);
+        $count = $stmt->rowCount();
+
+        Audit::record([
+            'action'      => 'auth.sessions_revoked_others',
+            'actor_type'  => 'platform',
+            'actor_id'    => $userId,
+            'description' => "Revoked {$count} other device session(s)",
+            'severity'    => 'notice',
+        ]);
+
+        return $count;
     }
 
     /* ---------------- impersonation ---------------- */

@@ -31,7 +31,7 @@ final class Audit
      */
     public static function record(array $entry): void
     {
-        $user = Auth::user();
+        $user = (!isset($entry['actor_id']) && !isset($entry['actor_type'])) ? Auth::user() : null;
 
         $row = [
             'actor_type'  => $entry['actor_type'] ?? ($user ? 'platform' : 'system'),
@@ -182,24 +182,42 @@ final class Settings
     public static function defaults(): array
     {
         return [
-            'platform_name'          => 'RestaurantOS',
-            'support_email'          => 'support@restaurantos.test',
-            'default_currency'       => 'USD',
-            'default_trial_days'     => '14',
-            'default_plan'           => 'growth',
-            'tax_rate'               => '0',
-            'invoice_prefix'         => 'INV',
-            'invoice_due_days'       => '14',
-            'signup_enabled'         => '1',
-            'maintenance_mode'       => '0',
-            'maintenance_message'    => 'We are performing scheduled maintenance and will be back shortly.',
-            'announcement_banner'    => '',
+            // --- general ---
+            'platform_name'            => 'RestaurantOS',
+            'support_email'            => 'support@restaurantos.test',
+            'logo_url'                 => '',
+            'favicon_url'              => '',
+            'timezone'                 => 'UTC',
+            'date_format'              => 'DD/MM/YYYY',
+            // --- branding ---
+            'brand_accent'             => '#6366f1',
+            'announcement_banner'      => '',
+            // --- email / SMTP ---
+            'smtp_from_name'           => 'RestaurantOS',
+            'smtp_from_email'          => '',
+            'smtp_host'                => '',
+            'smtp_port'                => '587',
+            'smtp_user'                => '',
+            'smtp_pass'                => '',
+            'smtp_encryption'          => 'tls',
+            // --- billing ---
+            'default_currency'         => 'USD',
+            'default_trial_days'       => '14',
+            'default_plan'             => 'growth',
+            'tax_rate'                 => '0',
+            'invoice_prefix'           => 'INV',
+            'invoice_due_days'         => '14',
+            'past_due_grace_days'      => '7',
+            'auto_suspend'             => '1',
+            // --- access ---
+            'signup_enabled'           => '1',
+            'maintenance_mode'         => '0',
+            'maintenance_message'      => 'We are performing scheduled maintenance and will be back shortly.',
+            // --- notifications ---
             'new_tenant_notifications' => '1',
-            'past_due_grace_days'    => '7',
-            'auto_suspend'           => '1',
-            'brand_accent'           => '#6366f1',
         ];
     }
+
 
     public static function all(bool $fresh = false): array
     {
@@ -618,4 +636,254 @@ final class Metrics
         }
         return round($bytes, 1) . ' ' . $units[$i];
     }
+
+    /** Return a structured requirements report for the system page. */
+    public static function requirements(): array
+    {
+        $phpVersion = PHP_VERSION;
+        $phpParts   = explode('.', $phpVersion);
+        $phpMajor   = (int) ($phpParts[0] ?? 0);
+        $phpMinor   = (int) ($phpParts[1] ?? 0);
+
+        $minVersion = '8.1';
+        $minParts    = explode('.', $minVersion);
+        $minMajor    = (int) $minParts[0];
+        $minMinor    = (int) $minParts[1];
+
+        $phpOk = $phpMajor > $minMajor || ($phpMajor === $minMajor && $phpMinor >= $minMinor);
+
+        // Required extensions
+        $requiredExtensions = [
+            'pdo'       => 'PDO (database abstraction)',
+            'pdo_mysql' => 'PDO MySQL (MySQL/MariaDB driver)',
+            'json'      => 'JSON (API responses)',
+            'mbstring'  => 'Multibyte string handling',
+            'tokenizer' => 'PHP tokenizer (auth/secrets)',
+            'hash'      => 'Cryptographic hashing (passwords, tokens)',
+            'session'   => 'Session handling (auth)',
+        ];
+
+        $extensions = [];
+        foreach ($requiredExtensions as $ext => $label) {
+            $loaded = extension_loaded($ext);
+            $extensions[$ext] = [
+                'label'   => $label,
+                'loaded'  => $loaded,
+                'version' => $loaded ? (phpversion($ext) ?? '—') : null,
+                'ok'      => $loaded,
+            ];
+        }
+
+        // Special case: pdo may be loaded via pdo_sqlite in sandbox
+        if (!extension_loaded('pdo_mysql') && extension_loaded('pdo_sqlite')) {
+            $extensions['pdo_mysql'] = [
+                'label'   => 'PDO MySQL',
+                'loaded'  => false,
+                'version' => null,
+                'ok'      => false,
+                'note'    => 'SQLite PDO is available. MySQL PDO required for production.',
+            ];
+        }
+
+        // PHP directives
+        $directives = [
+            'display_errors'  => ['label' => 'display_errors off (production)', 'ok' => ini_get('display_errors') == '0'],
+            'log_errors'      => ['label' => 'log_errors on', 'ok' => ini_get('log_errors') == '1'],
+            'opcache.enable'  => ['label' => 'OPcache enabled', 'ok' => function_exists('opcache_get_status') && (bool) ini_get('opcache.enable')],
+            'memory_limit'    => ['label' => 'memory_limit ≥ 128M', 'ok' => self::checkMemoryLimit()],
+        ];
+
+        // Disk space
+        $storagePath = Config::path((string) Config::get('storage.path', 'storage'));
+        $diskFree    = @disk_free_space($storagePath);
+        $diskFreeOk  = $diskFree !== false && $diskFree > 100 * 1024 * 1024;
+
+        // Config files
+        $configDir = Config::path('config');
+        $config = [
+            '.env'   => ['exists' => is_readable($configDir . '/.env')],
+            'app.php'=> ['exists' => is_readable($configDir . '/app.php')],
+            'db.php' => ['exists' => is_readable($configDir . '/db.php')],
+        ];
+
+        $allExtensionsOk = !empty(array_filter($extensions, static fn ($e) => $e['ok']));
+
+        return [
+            'php' => [
+                'version'     => $phpVersion,
+                'ok'          => $phpOk,
+                'min_version' => $minVersion,
+            ],
+            'extensions' => $extensions,
+            'directives' => $directives,
+            'disk' => [
+                'path'    => $storagePath,
+                'free'    => $diskFree !== false ? self::formatBytes($diskFree) : '—',
+                'ok'      => $diskFreeOk,
+            ],
+            'config' => $config,
+            'overall_ok' => $phpOk && $diskFreeOk && $allExtensionsOk
+                && !empty($config['.env']['exists'])
+                && !empty($config['app.php']['exists'])
+                && !empty($config['db.php']['exists']),
+        ];
+    }
+
+    private static function checkMemoryLimit(): bool
+    {
+        $limit = ini_get('memory_limit');
+        if ($limit === '-1') {
+            return true;
+        }
+        $limit = strtolower($limit);
+        $unit  = $limit[-1] ?? 'm';
+        $value = (int) substr($limit, 0, -1);
+        $bytes = match ($unit) {
+            'g' => $value * 1024 * 1024 * 1024,
+            'm' => $value * 1024 * 1024,
+            'k' => $value * 1024,
+            default => $value,
+        };
+        return $bytes >= 128 * 1024 * 1024;
+    }
+
+    private static function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i     = 0;
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+        return round($bytes, 1) . ' ' . $units[$i];
+    }
 }
+
+/* -------------------------------------------------------------------------
+ * Backup — platform and tenant database dumps
+ * ---------------------------------------------------------------------- */
+
+final class Backup
+{
+    /** Where .sql / .sqlite backups are stored. */
+    public static function directory(): string
+    {
+        return Config::path((string) Config::get('backup.path', 'storage/backups'));
+    }
+
+    /**
+     * Dump the platform database.
+     *   MySQL  → mysqldump piped through gzip
+     *   SQLite → copy the .sqlite file
+     */
+    public static function platform(?string $targetPath = null): string
+    {
+        $driver = \Resto\Database\Manager::driver();
+        $dir    = self::directory();
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+
+        if ($driver === 'sqlite') {
+            $src = \Resto\Database\Manager::sqliteDir() . '/platform.sqlite';
+            $dest = $targetPath ?? $dir . '/platform-' . date('Ymd-His') . '.sqlite';
+            if (!is_readable($src)) {
+                throw new \RuntimeException('Platform SQLite database not readable: ' . $src);
+            }
+            copy($src, $dest);
+            return $dest;
+        }
+
+        // MySQL: use mysqldump
+        $config = \Resto\Support\Config::get('database.platform');
+        $host   = $config['host'] ?? '127.0.0.1';
+        $port   = $config['port'] ?? 3306;
+        $user   = $config['username'] ?? 'root';
+        $pass   = $config['password'] ?? '';
+        $db     = $config['database'] ?? 'restaurantos_platform';
+
+        $dest = $targetPath ?? $dir . '/platform-' . date('Ymd-His') . '.sql.gz';
+        $fullCmd = sprintf(
+            'mysqldump --host=%s --port=%d --user=%s %s %s | gzip > %s 2>&1',
+            escapeshellarg($host),
+            (int) $port,
+            escapeshellarg($user),
+            $pass !== '' ? ('-p' . escapeshellarg($pass)) : '',
+            escapeshellarg($db),
+            escapeshellarg($dest)
+        );
+
+        $result = shell_exec($fullCmd);
+        if ($result !== null && trim($result) !== '') {
+            if (is_file($dest)) {
+                @unlink($dest);
+            }
+            throw new \RuntimeException('mysqldump failed: ' . $result);
+        }
+
+        if (!is_file($dest)) {
+            throw new \RuntimeException('Backup file was not created: ' . $dest);
+        }
+
+        return $dest;
+    }
+
+    /**
+     * Dump a tenant database.
+     *   MySQL  → mysqldump for restaurantos_t_<slug>
+     *   SQLite → copy the tenant .sqlite file
+     */
+    public static function tenant(int $tenantId, string $slug, ?string $targetPath = null): string
+    {
+        $driver = \Resto\Database\Manager::driver();
+        $dir    = self::directory();
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+
+        $prefix = \Resto\Support\Config::get('database.tenant_prefix', 'restaurantos_t_');
+        $dbName = $prefix . $slug;
+
+        if ($driver === 'sqlite') {
+            $src = \Resto\Database\Manager::sqliteDir() . '/' . $slug . '.sqlite';
+            $dest = $targetPath ?? $dir . '/tenant-' . $slug . '-' . date('Ymd-His') . '.sqlite';
+            if (!is_readable($src)) {
+                throw new \RuntimeException('Tenant SQLite database not readable: ' . $src);
+            }
+            copy($src, $dest);
+            return $dest;
+        }
+
+        $config = \Resto\Support\Config::get('database.platform');
+        $host   = $config['host'] ?? '127.0.0.1';
+        $port   = $config['port'] ?? 3306;
+        $user   = $config['username'] ?? 'root';
+        $pass   = $config['password'] ?? '';
+
+        $dest = $targetPath ?? $dir . '/tenant-' . $slug . '-' . date('Ymd-His') . '.sql.gz';
+        $fullCmd = sprintf(
+            'mysqldump --host=%s --port=%d --user=%s %s %s | gzip > %s 2>&1',
+            escapeshellarg($host),
+            (int) $port,
+            escapeshellarg($user),
+            $pass !== '' ? ('-p' . escapeshellarg($pass)) : '',
+            escapeshellarg($dbName),
+            escapeshellarg($dest)
+        );
+
+        $result = shell_exec($fullCmd);
+        if ($result !== null && trim($result) !== '') {
+            if (is_file($dest)) {
+                @unlink($dest);
+            }
+            throw new \RuntimeException('mysqldump failed for tenant ' . $slug . ': ' . $result);
+        }
+
+        if (!is_file($dest)) {
+            throw new \RuntimeException('Tenant backup file was not created: ' . $dest);
+        }
+
+        return $dest;
+    }
+}
+

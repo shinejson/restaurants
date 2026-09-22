@@ -6,7 +6,7 @@ require_once 'includes/functions.php';
 // Check login
 if (!isset($_SESSION['user_id'])) {
     $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
-    header('Location: auth/login.php');
+    header('Location: ' . tenant_url('auth/login.php'));
     exit();
 }
 

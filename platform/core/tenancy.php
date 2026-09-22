@@ -266,10 +266,11 @@ final class Resolver
             }
         }
 
-        // 2. ?__tenant=slug — lets one domain serve several restaurants
-        //    (used by the sandbox preview and for quick tenant switching).
+        // 2. ?__tenant=slug or ?__tenant=code — lets one domain serve several restaurants
+        //    (used by the clean /t/<slug> rewrite, sandbox preview and quick tenant switching).
         if (isset($_GET['__tenant'])) {
-            $tenant = $repo->findBySlug((string) $_GET['__tenant']);
+            $val = trim((string) $_GET['__tenant']);
+            $tenant = $repo->findBySlug($val) ?? $repo->findByCode($val);
             if ($tenant) {
                 $_SESSION[self::SESSION_KEY] = $tenant->slug();
                 return self::$resolved = $tenant;
@@ -520,7 +521,7 @@ final class Gatekeeper
   <span class="badge">Account {$tenant->status()}</span>
   <h1>{$name} is temporarily unavailable</h1>
   <p>{$reason}</p>
-  <p>Owners can restore access from the platform console: <a href="{$console}">{$console}</a></p>
+  <p>Platform administrators or owners can restore access from the platform console: <a href="{$console}">{$console}</a></p>
 </div></body></html>
 HTML;
         exit;

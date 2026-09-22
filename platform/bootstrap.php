@@ -178,15 +178,13 @@ function tenant_url(string $path = ''): string
 /** Absolute URL of the platform (superadmin console). */
 function platform_url(string $path = ''): string
 {
-    $base = rtrim((string) Config::get('app.scheme') . '://' . Config::get('app.root_domain'), '/');
-    return $base . '/superadmin' . ($path !== '' ? '/' . ltrim($path, '/') : '');
+    return \Resto\Tenancy\Links::console($path);
 }
 
 /** Absolute URL of the JSON API. */
 function api_url(string $path = ''): string
 {
-    $base = rtrim((string) Config::get('app.scheme') . '://' . Config::get('app.root_domain'), '/');
-    return $base . '/api/v1' . ($path !== '' ? '/' . ltrim($path, '/') : '');
+    return \Resto\Tenancy\Links::baseUrl() . '/api/v1' . ($path !== '' ? '/' . ltrim($path, '/') : '');
 }
 
 /* -------------------------------------------------------------------------

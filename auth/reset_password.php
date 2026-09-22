@@ -188,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php echo htmlspecialchars($success); ?>
             </div>
             <div class="auth-links">
-                <a href="login.php" class="btn-auth" style="text-decoration: none; text-align: center; display: block;">
+                <a href="<?php echo tenant_url('auth/login.php'); ?>" class="btn-auth" style="text-decoration: none; text-align: center; display: block;">
                     <i class="fas fa-sign-in-alt"></i> Go to Login
                 </a>
             </div>

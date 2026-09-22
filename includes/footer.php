@@ -1,57 +1,102 @@
+<?php
+$company_name = htmlspecialchars(get_setting('company_name', 'Restaurant'));
+$site_tagline = htmlspecialchars(get_setting('site_tagline', 'Order online, pick up in store or dine in.'));
+$site_logo = get_setting('site_logo', '');
+$address = htmlspecialchars(get_setting('contact_address', ''));
+$phone = htmlspecialchars(get_setting('contact_phone', ''));
+$email = htmlspecialchars(get_setting('contact_email', ''));
+$opening_mon_sat = htmlspecialchars(get_setting('opening_hours_weekday', '09:00 AM - 09:00 PM'));
+$opening_sun = htmlspecialchars(get_setting('opening_hours_weekend', '10:00 AM - 08:00 PM'));
+$facebook = htmlspecialchars(get_setting('social_facebook', '#'));
+$twitter = htmlspecialchars(get_setting('social_twitter', '#'));
+$instagram = htmlspecialchars(get_setting('social_instagram', '#'));
+$linkedin = htmlspecialchars(get_setting('social_linkedin', '#'));
+?>
 </main>
 
 <!-- Footer -->
 <footer class="main-footer" id="contact">
     <div class="container">
         <div class="footer-content">
-            <!-- Company Info -->
-            <div class="footer-section">
-                <h3>Company</h3>
-                        <div class="company-info">
-                <a href="index.php" class="logo footer-logo">
-                    <i class="fas fa-utensils"></i> <span><?php echo htmlspecialchars(get_setting('company_name', 'Restaurant')); ?></span>
+            <!-- 1. Company Info & Brand -->
+            <div class="footer-section footer-brand">
+                <a href="<?php echo tenant_url(''); ?>" class="footer-logo">
+                    <?php if (!empty($site_logo)): ?>
+                        <img src="<?php echo htmlspecialchars(BASE_URL . '/' . ltrim($site_logo, '/')); ?>" alt="<?php echo $company_name; ?>" class="footer-logo-img">
+                    <?php else: ?>
+                        <span class="footer-logo-icon"><i class="fas fa-utensils"></i></span>
+                    <?php endif; ?>
+                    <span class="footer-brand-title"><?php echo $company_name; ?></span>
                 </a>
-                <p><?php echo htmlspecialchars(get_setting('site_tagline', 'Order online, pick up in store or dine in.')); ?></p>
+                <p class="footer-tagline"><?php echo $site_tagline; ?></p>
                 <div class="social-links">
-                    <a href="#"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#"><i class="fab fa-twitter"></i></a>
-                    <a href="#"><i class="fab fa-instagram"></i></a>
-                    <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="<?php echo $facebook; ?>" title="Facebook" aria-label="Facebook" target="_blank" rel="noopener"><i class="fab fa-facebook-f"></i></a>
+                    <a href="<?php echo $twitter; ?>" title="Twitter" aria-label="Twitter" target="_blank" rel="noopener"><i class="fab fa-twitter"></i></a>
+                    <a href="<?php echo $instagram; ?>" title="Instagram" aria-label="Instagram" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>
+                    <a href="<?php echo $linkedin; ?>" title="LinkedIn" aria-label="LinkedIn" target="_blank" rel="noopener"><i class="fab fa-linkedin-in"></i></a>
                 </div>
             </div>
 
-            <!-- Opening Hours -->
-            <div class="footer-section">
-                <h3>Opening</h3>
-                <h5 class="opening-day">Monday - Saturday</h5>
-                <p>09AM - 09PM</p>
-                <h5 class="opening-day">Sunday</h5>
-                <p>10AM - 08PM</p>
+            <!-- 2. Opening Hours -->
+            <div class="footer-section footer-hours">
+                <h3>Opening Hours</h3>
+                <div class="opening-card">
+                    <div class="opening-item">
+                        <span class="day">Monday - Saturday</span>
+                        <span class="time"><?php echo $opening_mon_sat; ?></span>
+                    </div>
+                    <div class="opening-item">
+                        <span class="day">Sunday</span>
+                        <span class="time"><?php echo $opening_sun; ?></span>
+                    </div>
+                </div>
+                <div class="service-pill">
+                    <span class="service-dot"></span> Dine-In &bull; Takeaway &bull; Delivery
+                </div>
             </div>
 
-            <!-- Quick Links -->
+            <!-- 3. Quick Links -->
             <div class="footer-section footer-links">
                 <h3>Quick Links</h3>
                 <ul>
-                    <li><a href="index.php">Home</a></li>
-                    <li><a href="menu.php">Menu</a></li>
-                    <li><a href="cart.php">Cart</a></li>
-                    <li><a href="contact.php">Contact</a></li>
+                    <li><a href="<?php echo tenant_url(''); ?>"><i class="fas fa-angle-right"></i> Home</a></li>
+                    <li><a href="<?php echo tenant_url('menu.php'); ?>"><i class="fas fa-angle-right"></i> Our Menu</a></li>
+                    <li><a href="<?php echo tenant_url('events.php'); ?>"><i class="fas fa-angle-right"></i> Events & Catering</a></li>
+                    <li><a href="<?php echo tenant_url('cart.php'); ?>"><i class="fas fa-angle-right"></i> Shopping Cart</a></li>
+                    <li><a href="<?php echo tenant_url('contact.php'); ?>"><i class="fas fa-angle-right"></i> Contact Us</a></li>
+                    <li><a href="<?php echo tenant_url('admin/login.php'); ?>"><i class="fas fa-shield-alt"></i> Staff Portal</a></li>
                 </ul>
             </div>
 
-            <!-- Newsletter/Contact -->
-                        <div class="footer-section">
-                <h3>Contact</h3>
-                <p><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars(get_setting('contact_address', '')); ?></p>
-                <p><i class="fas fa-phone-alt"></i> <?php echo htmlspecialchars(get_setting('contact_phone', '')); ?></p>
-                <p><i class="fas fa-envelope"></i> <?php echo htmlspecialchars(get_setting('contact_email', '')); ?></p>
+            <!-- 4. Contact & Newsletter -->
+            <div class="footer-section footer-contact">
+                <h3>Contact Info</h3>
+                <div class="contact-list">
+                    <?php if (!empty($address)): ?>
+                        <div class="contact-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span><?php echo $address; ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($phone)): ?>
+                        <a href="tel:<?php echo preg_replace('/[^\d+]/', '', $phone); ?>" class="contact-item">
+                            <i class="fas fa-phone-alt"></i>
+                            <span><?php echo $phone; ?></span>
+                        </a>
+                    <?php endif; ?>
+                    <?php if (!empty($email)): ?>
+                        <a href="mailto:<?php echo $email; ?>" class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <span><?php echo $email; ?></span>
+                        </a>
+                    <?php endif; ?>
+                </div>
 
-                <div class="newsletter-form">
-                    <form action="#">
-                        <div style="position: relative;">
-                            <input type="text" placeholder="Your email">
-                            <button type="button">SignUp</button>
+                <div class="newsletter-wrap">
+                    <form class="newsletter-form" onsubmit="event.preventDefault(); alert('Thank you for subscribing!');">
+                        <div class="newsletter-box">
+                            <input type="email" placeholder="Your email address" required aria-label="Email address">
+                            <button type="submit">Subscribe</button>
                         </div>
                     </form>
                 </div>
@@ -59,7 +104,12 @@
         </div>
 
         <div class="footer-bottom">
-                        <p>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars(get_setting('company_name', 'Restaurant')); ?>. All Rights Reserved.</p>
+            <p>&copy; <?php echo date('Y'); ?> <strong><?php echo $company_name; ?></strong>. All Rights Reserved.</p>
+            <div class="footer-bottom-links">
+                <a href="<?php echo tenant_url('contact.php'); ?>">Support</a>
+                <span class="sep">&bull;</span>
+                <span class="powered-badge">Powered by <span>RestaurantOS</span></span>
+            </div>
         </div>
     </div>
 </footer>

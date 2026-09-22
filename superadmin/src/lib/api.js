@@ -31,8 +31,9 @@ export class ApiError extends Error {
 }
 
 async function request(method, path, body) {
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers = { accept: 'application/json' };
-  if (body !== undefined) headers['content-type'] = 'application/json';
+  if (body !== undefined && !isFormData) headers['content-type'] = 'application/json';
   if (csrfToken && method !== 'GET') headers['x-csrf-token'] = csrfToken;
 
   let response;
@@ -41,7 +42,7 @@ async function request(method, path, body) {
       method,
       headers,
       credentials: 'same-origin',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
     });
   } catch (networkError) {
     throw new ApiError('Cannot reach the platform API.', 0, 'network_error');
@@ -59,6 +60,11 @@ async function request(method, path, body) {
 
   if (!response.ok) {
     const error = payload?.error || {};
+    if (response.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/logout')) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('platform:unauthorized'));
+      }
+    }
     throw new ApiError(
       error.message || `Request failed with status ${response.status}`,
       response.status,
@@ -85,4 +91,10 @@ export const api = {
   post: (path, body) => request('POST', path, body ?? {}),
   patch: (path, body) => request('PATCH', path, body ?? {}),
   delete: (path, body) => request('DELETE', path, body ?? {}),
+  upload: (path, formData) => request('POST', path, formData),
+  url: (path) => `${API_BASE}${path}`,
 };
+
+export { API_BASE };
+
+

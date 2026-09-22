@@ -54,7 +54,10 @@ function resto_present_tenant(Tenant $tenant, bool $withUsage = false): array
     $links   = [
         'storefront' => Links::storefront($tenant, ''),
         'admin'      => Links::admin($tenant),
+        'menu'       => Links::menu($tenant),
+        'orders'     => Links::orders($tenant),
         'billing'    => Links::billing($tenant),
+        'by_code'    => Links::byCode($tenant),
     ];
 
     $data = [
@@ -63,6 +66,9 @@ function resto_present_tenant(Tenant $tenant, bool $withUsage = false): array
         'name'            => $tenant->name(),
         'slug'            => $tenant->slug(),
         'access_code'     => $tenant->accessCode(),
+        'unique_url'      => Links::storefront($tenant, ''),
+        'admin_url'       => Links::admin($tenant),
+        'code_url'        => Links::byCode($tenant),
         'legal_name'      => $tenant->get('legal_name'),
         'owner_name'      => $tenant->get('owner_name'),
         'owner_email'     => $tenant->get('owner_email'),

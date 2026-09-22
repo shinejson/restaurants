@@ -32,6 +32,6 @@ if (ini_get("session.use_cookies")) {
 session_destroy();
 
 // Redirect to home page
-header('Location: ' . BASE_URL . '/index.php');
+header('Location: ' . tenant_url('index.php'));
 exit();
 ?>

@@ -62,14 +62,60 @@ final class Links
         return $scheme . '://' . $host;
     }
 
-    public static function storefront(Tenant $tenant, string $path = ''): string
+    /**
+     * Platform base URL including subfolder if installed in one
+     * (e.g. http://localhost:8080/restaurants).
+     */
+    public static function baseUrl(): string
     {
-        return self::forTenant($tenant, $path === '' ? '/' : '/' . ltrim($path, '/'));
+        if (defined('BASE_URL') && BASE_URL !== '') {
+            return rtrim(BASE_URL, '/');
+        }
+
+        $origin = self::origin();
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $file   = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_FILENAME'] ?? ''));
+        $appDir = str_replace('\\', '/', dirname(__DIR__, 2));
+        $root   = '';
+        if ($script !== '' && $file !== '' && str_starts_with($file, $appDir . '/')) {
+            $relative = substr($file, strlen($appDir));
+            if (str_ends_with($script, $relative)) {
+                $root = substr($script, 0, strlen($script) - strlen($relative));
+            }
+        }
+
+        return rtrim($origin . $root, '/');
     }
 
-    public static function admin(Tenant $tenant, string $path = 'admin/login.php'): string
+    /**
+     * Unique storefront link for the tenant.
+     * Host routing: https://{slug}.rootdomain.com/ or https://customdomain.com/
+     * Single-host:  http://localhost:8080/restaurants/t/{slug}/
+     */
+    public static function storefront(Tenant $tenant, string $path = ''): string
     {
-        return self::forTenant($tenant, '/' . ltrim($path, '/'));
+        return self::forTenant($tenant, $path === '' ? '' : '/' . ltrim($path, '/'));
+    }
+
+    /**
+     * Unique admin login / portal link for the tenant.
+     * Host routing: https://{slug}.rootdomain.com/admin
+     * Single-host:  http://localhost:8080/restaurants/t/{slug}/admin
+     */
+    public static function admin(Tenant $tenant, string $path = 'admin'): string
+    {
+        $cleanPath = ltrim($path, '/');
+        return self::forTenant($tenant, '/' . $cleanPath);
+    }
+
+    public static function menu(Tenant $tenant): string
+    {
+        return self::forTenant($tenant, '/menu');
+    }
+
+    public static function orders(Tenant $tenant): string
+    {
+        return self::forTenant($tenant, '/orders');
     }
 
     public static function billing(Tenant $tenant): string
@@ -77,19 +123,40 @@ final class Links
         return self::forTenant($tenant, '/admin/billing.php');
     }
 
+    /**
+     * Direct unique URL using the restaurant's short access code.
+     * e.g. http://localhost:8080/restaurants/t/{access_code}/
+     */
+    public static function byCode(Tenant $tenant, string $path = ''): string
+    {
+        $code = $tenant->accessCode();
+        if (self::usesHostRouting()) {
+            return self::storefront($tenant, $path);
+        }
+        $sub = $path === '' ? '/' : '/' . ltrim($path, '/');
+        return self::baseUrl() . '/t/' . urlencode($code) . $sub;
+    }
+
     private static function forTenant(Tenant $tenant, string $path): string
     {
         if (self::usesHostRouting()) {
-            return rtrim($tenant->baseUrl(), '/') . $path;
+            return rtrim($tenant->baseUrl(), '/') . ($path === '' ? '/' : $path);
         }
 
-        $separator = str_contains($path, '?') ? '&' : '?';
-        return self::origin() . $path . $separator . '__tenant=' . urlencode($tenant->slug());
+        $base = self::baseUrl();
+        $slug = urlencode($tenant->slug());
+
+        // Clean unique path-based routing: /t/<slug>/...
+        if ($path === '' || $path === '/') {
+            return $base . '/t/' . $slug . '/';
+        }
+
+        return $base . '/t/' . $slug . $path;
     }
 
     /** The console URL (superadmin SPA). */
     public static function console(string $path = ''): string
     {
-        return self::origin() . '/superadmin' . ($path === '' ? '/' : '/' . ltrim($path, '/'));
+        return self::baseUrl() . '/superadmin' . ($path === '' ? '/' : '/' . ltrim($path, '/'));
     }
 }

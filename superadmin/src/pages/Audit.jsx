@@ -17,7 +17,7 @@ export default function Audit() {
   const load = useCallback(() => {
     setLoading(true);
     api
-      .get('/audit-logs', { action, severity, search, page, per_page: 40 })
+      .get('/audit-logs', { action, severity, search, page, per_page: 5 })
       .then((response) => {
         setRows(response.data || []);
         setMeta(response.meta || {});
@@ -74,12 +74,13 @@ export default function Audit() {
         </form>
       </div>
 
-      <Card padded={false}>
+      <Card padded={false} style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 300px)' }}>
         <Table
           loading={loading && !rows.length}
           rows={rows}
           empty="No audit entries match"
           onRowClick={(row) => setExpanded(expanded === row.id ? null : row.id)}
+          style={{ flex: 1, overflowY: 'auto' }}
           columns={[
             {
               key: 'description',

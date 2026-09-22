@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 import { date, money, number, relative, titleCase } from '../lib/format';
 import { useSession } from '../lib/session';
 import {
-  Avatar, Badge, Button, Card, Empty, Field, Input, Modal, Select, StatusBadge, Table,
+  Avatar, Badge, Button, Card, Empty, Field, Input, Modal, Select, StatusBadge, Table, Toasts, useToasts,
 } from '../components/ui';
 
 const STATUS_FILTERS = ['all', 'active', 'trial', 'past_due', 'suspended', 'cancelled'];
@@ -27,6 +27,7 @@ export default function Tenants() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const { can } = useSession();
+  const { toasts, push, dismiss } = useToasts();
 
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ counts: {}, total_all: 0, page: 1, last_page: 1, total: 0 });
@@ -176,13 +177,60 @@ export default function Tenants() {
                 <div className="row gap-10">
                   <Avatar name={row.name} tone={row.plan?.accent_color} />
                   <div className="cell-stack">
-                    <strong>{row.name}</strong>
+                    <div className="row gap-6" style={{ alignItems: 'center' }}>
+                      <strong>{row.name}</strong>
+                      <Badge tone="purple" style={{ fontSize: '0.72rem', letterSpacing: '0.08em', padding: '1px 5px', fontWeight: 600 }}>
+                        {row.access_code}
+                      </Badge>
+                    </div>
                     <span className="muted tiny">
                       {row.slug} · {row.owner_name} ({row.owner_email})
                     </span>
                   </div>
                 </div>
               ),
+            },
+            {
+              key: 'links',
+              label: 'Platform Links',
+              render: (row) => {
+                const storefront = row.links?.storefront || row.unique_url;
+                const adminUrl = row.links?.admin || row.admin_url;
+                return (
+                  <div className="row gap-6 wrap" onClick={(event) => event.stopPropagation()} style={{ alignItems: 'center' }}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      style={{ padding: '2px 8px', fontSize: '0.78rem' }}
+                      title="Open storefront"
+                      onClick={() => window.open(storefront, '_blank', 'noopener')}
+                    >
+                      Storefront ↗
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      style={{ padding: '2px 8px', fontSize: '0.78rem' }}
+                      title="Open admin login"
+                      onClick={() => window.open(adminUrl, '_blank', 'noopener')}
+                    >
+                      Admin ↗
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      style={{ padding: '2px 6px', fontSize: '0.78rem' }}
+                      title="Copy storefront link"
+                      onClick={() => {
+                        navigator.clipboard.writeText(storefront);
+                        push('Copied', `Copied link for ${row.name}`, 'success');
+                      }}
+                    >
+                      📋
+                    </Button>
+                  </div>
+                );
+              },
             },
             { key: 'plan', label: 'Plan', render: (row) => <Badge tone="indigo">{row.plan?.name || '—'}</Badge> },
             {
@@ -267,19 +315,37 @@ export default function Tenants() {
               <strong>{created.tenant.name}</strong> is live on the {created.tenant.plan?.name} plan.
             </div>
             <dl className="kv">
-              <dt>Storefront</dt>
-              <dd>
-                <a className="link" href={created.tenant.links.storefront} target="_blank" rel="noreferrer">
-                  {created.tenant.links.storefront}
+              <dt>Storefront Link</dt>
+              <dd className="row gap-8" style={{ alignItems: 'center' }}>
+                <a className="link" href={created.tenant.links?.storefront || created.tenant.unique_url} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
+                  {created.tenant.links?.storefront || created.tenant.unique_url}
                 </a>
+                <Button size="sm" variant="ghost" onClick={() => {
+                  navigator.clipboard.writeText(created.tenant.links?.storefront || created.tenant.unique_url);
+                  push('Copied', 'Storefront link copied', 'success');
+                }}>Copy</Button>
               </dd>
-              <dt>Admin</dt>
-              <dd>
-                <a className="link" href={created.tenant.links.admin} target="_blank" rel="noreferrer">
-                  {created.tenant.links.admin}
+              <dt>Admin Portal</dt>
+              <dd className="row gap-8" style={{ alignItems: 'center' }}>
+                <a className="link" href={created.tenant.links?.admin || created.tenant.admin_url} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
+                  {created.tenant.links?.admin || created.tenant.admin_url}
                 </a>
+                <Button size="sm" variant="ghost" onClick={() => {
+                  navigator.clipboard.writeText(created.tenant.links?.admin || created.tenant.admin_url);
+                  push('Copied', 'Admin link copied', 'success');
+                }}>Copy</Button>
               </dd>
-              <dt>Username</dt>
+              <dt>Access Code</dt>
+              <dd className="row gap-8" style={{ alignItems: 'center' }}>
+                <Badge tone="purple" style={{ fontWeight: 700, letterSpacing: '0.1em' }}>
+                  {created.tenant.access_code}
+                </Badge>
+                <Button size="sm" variant="ghost" onClick={() => {
+                  navigator.clipboard.writeText(created.tenant.access_code);
+                  push('Copied', 'Access code copied', 'success');
+                }}>Copy</Button>
+              </dd>
+              <dt>Admin Username</dt>
               <dd>
                 <code>{created.admin_username}</code>
               </dd>
@@ -292,6 +358,25 @@ export default function Tenants() {
                 <code>{created.tenant.db_name}</code>
               </dd>
             </dl>
+            <Button
+              size="sm"
+              variant="secondary"
+              style={{ width: '100%', marginTop: 4 }}
+              onClick={() => {
+                const sUrl = created.tenant.links?.storefront || created.tenant.unique_url;
+                const aUrl = created.tenant.links?.admin || created.tenant.admin_url;
+                const note = `Restaurant: ${created.tenant.name}
+Storefront URL: ${sUrl}
+Admin Portal: ${aUrl}
+Access Code: ${created.tenant.access_code}
+Admin User: ${created.admin_username}
+Admin Password: ${created.owner_password}`;
+                navigator.clipboard.writeText(note);
+                push('Copied All', 'Onboarding credentials copied to clipboard', 'success');
+              }}
+            >
+              📋 Copy All Credentials (to send to Owner)
+            </Button>
           </div>
         ) : (
           <form id="create-tenant" className="col gap-14" onSubmit={createTenant}>
@@ -355,6 +440,7 @@ export default function Tenants() {
           </form>
         )}
       </Modal>
+      <Toasts toasts={toasts} dismiss={dismiss} />
     </div>
   );
 }

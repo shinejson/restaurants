@@ -5,7 +5,7 @@ require_once '../config/db.php';
 require_once '../includes/functions.php';
 
 if (!isset($_SESSION['user_id'])) {
-    header('Location: ' . BASE_URL . '/auth/login.php');
+    header('Location: ' . tenant_url('auth/login.php?redirect=' . urlencode('profile.php?tab=companies')));
     exit;
 }
 

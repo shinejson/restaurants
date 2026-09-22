@@ -44,6 +44,25 @@ export default function TenantDetail() {
     }
   }, [id]);
 
+  const copyText = (text, label) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    push('Copied', `${label} copied to clipboard`, 'success');
+  };
+
+  const copyAllAccess = () => {
+    if (!tenant) return;
+    const sUrl = tenant.links?.storefront || tenant.unique_url;
+    const aUrl = tenant.links?.admin || tenant.admin_url;
+    const text = `Restaurant: ${tenant.name}
+Storefront URL: ${sUrl}
+Admin Portal: ${aUrl}
+Access Code: ${tenant.access_code}
+Owner: ${tenant.owner_name} (${tenant.owner_email})`;
+    navigator.clipboard.writeText(text);
+    push('Copied All Access Info', 'Restaurant login and access details copied to clipboard', 'success');
+  };
+
   useEffect(() => {
     load();
     api.get('/plans').then((response) => setPlans(response.data || [])).catch(() => {});
@@ -127,8 +146,8 @@ export default function TenantDetail() {
           </p>
         </div>
         <div className="row gap-8 wrap">
-          <Button size="sm" onClick={() => window.open(tenant.links.storefront, '_blank', 'noopener')}>Storefront ↗</Button>
-          <Button size="sm" onClick={() => window.open(tenant.links.admin, '_blank', 'noopener')}>Admin ↗</Button>
+          <Button size="sm" onClick={() => window.open(tenant.links?.storefront || tenant.unique_url, '_blank', 'noopener')}>Storefront ↗</Button>
+          <Button size="sm" onClick={() => window.open(tenant.links?.admin || tenant.admin_url, '_blank', 'noopener')}>Admin ↗</Button>
           {can('tenants.impersonate') && (
             <Button size="sm" variant="secondary" onClick={() => setImpersonateOpen(true)} loading={busy === 'impersonate'}>
               Sign in as owner
@@ -152,14 +171,14 @@ export default function TenantDetail() {
               Edit
             </Button>
           )}
-          {can('tenants.suspend') && tenant.status !== 'suspended' && (
+          {can('tenants.suspend') && ['active', 'trial'].includes(tenant.status) && (
             <Button size="sm" variant="danger" onClick={() => { setStatusForm({ status: 'suspended', reason: '' }); setStatusOpen(true); }}>
               Suspend
             </Button>
           )}
-          {can('tenants.suspend') && tenant.status === 'suspended' && (
-            <Button size="sm" variant="primary" loading={busy === 'status'} onClick={() => setStatus('active', 'Access restored from the console')}>
-              Reactivate
+          {can('tenants.suspend') && ['suspended', 'cancelled', 'past_due'].includes(tenant.status) && (
+            <Button size="sm" variant="primary" loading={busy === 'status'} onClick={() => setStatus('active', 'Access restored from the platform console')}>
+              Reactivate Account
             </Button>
           )}
         </div>
@@ -168,6 +187,16 @@ export default function TenantDetail() {
       {tenant.suspended_reason && tenant.status === 'suspended' && (
         <div className="alert alert-warn">
           <strong>Suspended.</strong> {tenant.suspended_reason} (since {date(tenant.suspended_at)})
+        </div>
+      )}
+      {tenant.status === 'cancelled' && (
+        <div className="alert alert-error">
+          <strong>Account Cancelled.</strong> This restaurant was cancelled (since {date(tenant.cancelled_at)}). Their storefront and staff portals are blocked. Click <strong>Reactivate Account</strong> above to restore full access.
+        </div>
+      )}
+      {tenant.status === 'past_due' && (
+        <div className="alert alert-warn">
+          <strong>Subscription Past Due.</strong> This restaurant's payment is overdue. Click <strong>Reactivate Account</strong> above to restore access.
         </div>
       )}
       {health.issues?.length > 0 && (
@@ -190,6 +219,77 @@ export default function TenantDetail() {
 
       {tab === 'overview' && (
         <div className="two-col">
+          <Card title="Access & Unique Links" subtitle="Dedicated URLs for this restaurant's storefront and staff portal">
+            <div className="col gap-12">
+              <div>
+                <label className="muted tiny uppercase bold" style={{ display: 'block', marginBottom: 4 }}>
+                  Storefront Unique Link
+                </label>
+                <div className="row gap-8" style={{ alignItems: 'center' }}>
+                  <code style={{ flex: 1, padding: '6px 10px', background: 'var(--slate-900, #0f172a)', border: '1px solid var(--border)', borderRadius: 6, fontSize: '0.85rem', wordBreak: 'break-all' }}>
+                    {tenant.links?.storefront || tenant.unique_url}
+                  </code>
+                  <Button size="sm" variant="secondary" onClick={() => copyText(tenant.links?.storefront || tenant.unique_url, 'Storefront link')}>
+                    Copy
+                  </Button>
+                  <Button size="sm" onClick={() => window.open(tenant.links?.storefront || tenant.unique_url, '_blank', 'noopener')}>
+                    Open ↗
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <label className="muted tiny uppercase bold" style={{ display: 'block', marginBottom: 4 }}>
+                  Restaurant Admin Login
+                </label>
+                <div className="row gap-8" style={{ alignItems: 'center' }}>
+                  <code style={{ flex: 1, padding: '6px 10px', background: 'var(--slate-900, #0f172a)', border: '1px solid var(--border)', borderRadius: 6, fontSize: '0.85rem', wordBreak: 'break-all' }}>
+                    {tenant.links?.admin || tenant.admin_url}
+                  </code>
+                  <Button size="sm" variant="secondary" onClick={() => copyText(tenant.links?.admin || tenant.admin_url, 'Admin login link')}>
+                    Copy
+                  </Button>
+                  <Button size="sm" onClick={() => window.open(tenant.links?.admin || tenant.admin_url, '_blank', 'noopener')}>
+                    Open ↗
+                  </Button>
+                </div>
+              </div>
+
+              <div className="row gap-12 wrap" style={{ marginTop: 4, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <span className="muted tiny uppercase bold" style={{ display: 'block' }}>Restaurant Access Code</span>
+                  <div className="row gap-8" style={{ alignItems: 'center', marginTop: 4 }}>
+                    <Badge tone="purple" style={{ fontSize: '0.95rem', letterSpacing: '0.15em', fontWeight: 700, padding: '4px 10px' }}>
+                      {tenant.access_code}
+                    </Badge>
+                    <Button size="sm" variant="ghost" onClick={() => copyText(tenant.access_code, 'Access code')}>
+                      Copy
+                    </Button>
+                  </div>
+                  <span className="muted tiny" style={{ marginTop: 2, display: 'block' }}>
+                    Staff use this code to sign in directly
+                  </span>
+                </div>
+
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <span className="muted tiny uppercase bold" style={{ display: 'block' }}>Domain / Routing</span>
+                  <div style={{ marginTop: 4 }}>
+                    {tenant.custom_domain ? (
+                      <span className="badge badge-green">Custom: {tenant.custom_domain}</span>
+                    ) : (
+                      <span className="muted small">{tenant.subdomain || `${tenant.slug}.localhost`}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 6, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                <Button size="sm" variant="ghost" style={{ width: '100%' }} onClick={copyAllAccess}>
+                  📋 Copy All Access Details (to send to Owner)
+                </Button>
+              </div>
+            </div>
+          </Card>
           <Card title="Subscription">
             <div className="col gap-14">
               <div className="row gap-12">

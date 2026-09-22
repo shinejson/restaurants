@@ -5,8 +5,14 @@ require_once '../includes/functions.php';
 
 // Redirect if already logged in as customer
 if (isset($_SESSION['user_id']) && ($_SESSION['user_role'] ?? '') === 'customer') {
-    header('Location: ../profile.php');
+    header('Location: ' . tenant_url('profile.php'));
     exit();
+}
+
+// Support redirect parameter
+$redirect = clean_input($_GET['redirect'] ?? $_POST['redirect'] ?? '');
+if (empty($redirect) && !empty($_SESSION['redirect_url'])) {
+    $redirect = $_SESSION['redirect_url'];
 }
 
 $errors = [];
@@ -48,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $conn->prepare("SELECT id FROM customers WHERE username = ? OR email = ?");
     $stmt->execute([$username, $email]);
     if ($stmt->fetch()) {
-        $errors[] = 'Username or email already exists';
+        $errors[] = 'Username or email already exists in this restaurant';
     }
 
     // Create user if no errors
@@ -56,9 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
         try {
-            // Updated: Using full_name, phone, address and password (not password_hash)
-            $stmt = $conn->prepare("INSERT INTO customers (username, email, password, full_name, phone, address) 
-                                   VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt = $conn->prepare("INSERT INTO customers (username, email, password, full_name, phone, address, type) 
+                                   VALUES (?, ?, ?, ?, ?, ?, 'customer')");
 
             $stmt->execute([$username, $email, $password_hash, $full_name, $phone, $address]);
 
@@ -72,8 +77,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['email'] = $email;
             $_SESSION['user_role'] = 'customer';
 
-            // Redirect to home
-            header('Location: ../index.php?registered=1');
+            // Redirect to target or home
+            if (!empty($redirect)) {
+                unset($_SESSION['redirect_url']);
+                if (str_starts_with($redirect, 'http://') || str_starts_with($redirect, 'https://')) {
+                    header('Location: ' . $redirect);
+                } else {
+                    header('Location: ' . tenant_url(ltrim($redirect, '/')));
+                }
+                exit();
+            }
+
+            header('Location: ' . tenant_url('index.php?registered=1'));
             exit();
 
         } catch (PDOException $e) {
@@ -238,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="auth-header">
             <i class="fas fa-user-plus"></i>
             <h1>Create Account</h1>
-            <p>Join our food ordering community</p>
+            <p>Join <strong><?php echo htmlspecialchars(get_setting('company_name', 'our restaurant')); ?></strong> for fast ordering and rewards</p>
         </div>
 
         <?php if (!empty($errors)): ?>
@@ -253,6 +268,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form method="POST" action="" id="registerForm">
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+            <?php if (!empty($redirect)): ?>
+                <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($redirect); ?>">
+            <?php endif; ?>
 
             <div class="form-row">
                 <div class="form-group">
@@ -294,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-row">
                 <div class="form-group">
                     <label for="password"><i class="fas fa-key"></i> Password *</label>
-                    <input type="password" id="password" name="password" class="form-control" required>
+                    <input type="password" id="password" name="password" class="form-control" required minlength="8">
                     <div class="password-strength">
                         <div>Password strength: <span id="strengthText">Weak</span></div>
                         <div class="strength-meter">
@@ -305,16 +323,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-group">
                     <label for="confirm_password"><i class="fas fa-key"></i> Confirm Password *</label>
-                    <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-control" required minlength="8">
                     <div id="passwordMatch" class="form-text"></div>
                 </div>
             </div>
 
             <div class="form-group">
                 <div class="checkbox-group">
-                    <input type="checkbox" id="terms" name="terms" required>
-                    <label for="terms">I agree to the <a href="../terms.php" target="_blank">Terms of Service</a> and <a
-                            href="../privacy.php" target="_blank">Privacy Policy</a></label>
+                    <input type="checkbox" id="terms" name="terms" required checked>
+                    <label for="terms">I agree to the <a href="<?php echo tenant_url('terms.php'); ?>" target="_blank">Terms of Service</a> and <a
+                            href="<?php echo tenant_url('privacy.php'); ?>" target="_blank">Privacy Policy</a></label>
                 </div>
             </div>
 
@@ -324,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
 
         <div class="auth-links">
-            <p>Already have an account? <a href="login.php">Sign in here</a></p>
+            <p>Already have an account? <a href="<?php echo tenant_url('auth/login.php' . (!empty($redirect) ? '?redirect=' . urlencode($redirect) : '')); ?>">Sign in here</a></p>
         </div>
     </div>
 </div>

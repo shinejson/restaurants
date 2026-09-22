@@ -34,8 +34,8 @@ if (isset($_SESSION['session_msg'])) {
  * host itself names the restaurant (sub-domain or custom domain) the code is
  * optional — but if it is typed, it must be this restaurant's code.
  * ------------------------------------------------------------------------ */
-$code_required = !Resolver::hostIdentifiesTenant();
-$entered_code  = TenantCode::normalise((string) ($_POST['tenant_code'] ?? ''));
+$code_required = !Resolver::hostIdentifiesTenant() && current_tenant() === null;
+$entered_code  = TenantCode::normalise((string) ($_POST['tenant_code'] ?? '')) ?: (current_tenant()?->accessCode() ?? '');
 $signing_into  = current_tenant()?->name();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Enter your restaurant code to sign in.';
     } else {
         // The code decides which restaurant (and database) we authenticate
-        // against; without one, the host that served this page does.
+        // against; without one, the host or unique URL that served this page does.
         if ($entered_code !== '') {
             $target = tenant_by_code($entered_code);
 
@@ -66,6 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $conn = use_tenant($target);
                 }
             }
+        } elseif (current_tenant() !== null) {
+            $target = current_tenant();
+            $signing_into = $target->name();
         }
 
         if ($error === '') {
@@ -259,8 +262,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                            maxlength="12" autocomplete="off" spellcheck="false"
                            placeholder="e.g. K7M2Q" <?php echo $code_required ? 'required' : ''; ?>>
                     <small style="color:#888; display:block; margin-top:0.4rem;">
-                        The <?php echo TenantCode::length(); ?>-character code for your restaurant — from your
-                        welcome email or the platform admin.
+                        <?php if (current_tenant() !== null): ?>
+                            Pre-filled for <strong><?php echo htmlspecialchars(current_tenant()->name()); ?></strong>.
+                        <?php else: ?>
+                            The <?php echo TenantCode::length(); ?>-character code for your restaurant — from your
+                            welcome email or the platform admin.
+                        <?php endif; ?>
                     </small>
                 </div>
 

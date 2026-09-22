@@ -46,7 +46,7 @@
     <header class="main-header">
         <div class="container">
             <div class="header-content">
-                                                <a href="<?php echo BASE_URL; ?>/index.php" class="logo">
+                                                <a href="<?php echo tenant_url(); ?>" class="logo">
                     <i class="fas fa-utensils"></i> <?php echo htmlspecialchars(get_setting('company_name', 'Restaurant')); ?>
                 </a>
 
@@ -56,28 +56,30 @@
 
                 <nav class="main-nav">
                     <ul>
-                        <li><a href="<?php echo BASE_URL; ?>/index.php"><i class="fas fa-home"></i> Home</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/menu.php"><i class="fas fa-book-open"></i> Menu</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/events.php"><i class="fas fa-calendar-alt"></i> Events</a>
+                        <li><a href="<?php echo tenant_url('index.php'); ?>"><i class="fas fa-home"></i> Home</a></li>
+                        <li><a href="<?php echo tenant_url('menu.php'); ?>"><i class="fas fa-book-open"></i> Menu</a></li>
+                        <li><a href="<?php echo tenant_url('events.php'); ?>"><i class="fas fa-calendar-alt"></i> Events</a>
                         </li>
-                        <li><a href="<?php echo BASE_URL; ?>/contact.php"><i class="fas fa-phone"></i> Contact</a>
+                        <li><a href="<?php echo tenant_url('contact.php'); ?>"><i class="fas fa-phone"></i> Contact</a>
                         </li>
 
                         <?php if (isset($_SESSION['user_id'])): ?>
-                            <li><a href="<?php echo BASE_URL; ?>/profile.php"><i class="fas fa-user-circle"></i> Profile</a>
+                            <li><a href="<?php echo tenant_url('profile.php'); ?>"><i class="fas fa-user-circle"></i> Profile</a>
+                            </li>
+                            <li><a href="<?php echo tenant_url('auth/logout.php'); ?>"><i class="fas fa-sign-out-alt"></i> Logout</a>
                             </li>
                         <?php elseif (isset($_SESSION['admin_id'])): ?>
-                            <li><a href="<?php echo BASE_URL; ?>/admin/dashboard.php"><i class="fas fa-user-shield"></i>
+                            <li><a href="<?php echo tenant_url('admin/dashboard.php'); ?>"><i class="fas fa-user-shield"></i>
                                     Admin Panel</a></li>
                         <?php else: ?>
-                            <li><a href="<?php echo BASE_URL; ?>/auth/login.php"><i class="fas fa-sign-in-alt"></i>
+                            <li><a href="<?php echo tenant_url('auth/login.php'); ?>"><i class="fas fa-sign-in-alt"></i>
                                     Login</a></li>
-                            <li><a href="<?php echo BASE_URL; ?>/auth/register.php"><i class="fas fa-user-plus"></i>
+                            <li><a href="<?php echo tenant_url('auth/register.php'); ?>"><i class="fas fa-user-plus"></i>
                                     Register</a></li>
                         <?php endif; ?>
 
                         <li>
-                            <a href="<?php echo BASE_URL; ?>/cart.php" class="cart-icon">
+                            <a href="<?php echo tenant_url('cart.php'); ?>" class="cart-icon">
                                 <i class="fas fa-shopping-cart"></i>
                                 <span class="cart-count" id="cartCount">
                                     <?php echo isset($_SESSION['cart']) ? array_sum($_SESSION['cart']) : 0; ?>

@@ -69,10 +69,12 @@ return static function (Router $router): void {
             ]);
         }, [Middleware::throttle('login', 20)]);
 
-        $router->post('/logout', static function (): Response {
+        $logoutHandler = static function (): Response {
             Auth::logout();
             return Response::ok(['message' => 'Signed out']);
-        }, [Middleware::auth(), Middleware::csrf()]);
+        };
+        $router->post('/logout', $logoutHandler);
+        $router->get('/logout', $logoutHandler);
 
         $router->post('/password', static function (Request $request): Response {
             $validator = Validator::make($request->all(), [
@@ -125,6 +127,14 @@ return static function (Router $router): void {
         $router->delete('/sessions/{id}', static function (Request $request, string $id): Response {
             Auth::revokeSession((int) $id);
             return Response::ok(['message' => 'Signed out that device']);
+        }, [Middleware::auth(), Middleware::csrf()]);
+
+        $router->post('/sessions/revoke-others', static function (): Response {
+            $count = Auth::revokeOtherSessions(Auth::id());
+            return Response::ok([
+                'message' => $count > 0 ? "Signed out {$count} other device(s)" : 'No other active sessions',
+                'revoked' => $count,
+            ]);
         }, [Middleware::auth(), Middleware::csrf()]);
     });
 };

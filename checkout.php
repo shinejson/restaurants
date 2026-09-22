@@ -4,25 +4,32 @@ require_once 'config/db.php';
 require_once 'includes/functions.php';
 
 if (empty($_SESSION['cart'])) {
-    header('Location: ' . BASE_URL . '/index.php');
+    header('Location: ' . tenant_url('index.php'));
     exit;
 }
 
-// Fixed: Correct session check for user_id/logged_in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: ' . BASE_URL . '/auth/login.php');
-    exit;
+// Guest checkout support: check if logged in or proceeding as guest
+$is_guest = !isset($_SESSION['user_id']);
+$user_id = $_SESSION['user_id'] ?? null;
+$current_customer = null;
+
+if (!$is_guest) {
+    $cstmt = $conn->prepare("SELECT id, username, email, full_name, phone, address FROM customers WHERE id = ?");
+    $cstmt->execute([$user_id]);
+    $current_customer = $cstmt->fetch(PDO::FETCH_ASSOC);
+
+    // Fetch User's Companies for searchable selection
+    $stmt = $conn->prepare("SELECT id, name, location FROM companies WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $user_companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $user_companies = [];
 }
 
 // Generate CSRF token if not exists
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
-
-// Fetch User's Companies for searchable selection
-$stmt = $conn->prepare("SELECT id, name, location FROM companies WHERE user_id = ?");
-$stmt->execute([$_SESSION['user_id']]);
-$user_companies = $stmt->fetchAll();
 
 // Fetch Delivery Zones
 $delivery_zones = $conn->query("SELECT * FROM delivery_zones ORDER BY zone_name")->fetchAll();
@@ -55,7 +62,6 @@ foreach ($_SESSION['cart'] as $id => $qty) {
 }
 
 // Group cart items by tax group & compute the tax breakdown
-// (taxes are INCLUDED in the item prices — they are extracted, not added)
 $tax_grouped = group_items_by_tax($cart_items_details);
 $total_tax_included = 0;
 foreach ($tax_grouped as $tg) {
@@ -80,13 +86,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['csrf']) && $_POST['csr
 
         $final_total = $items_total + $delivery_charge;
 
+        // Customer / Guest resolution
+        $order_username = '';
+        if ($is_guest) {
+            $guest_name = clean_input($_POST['guest_name'] ?? '');
+            $guest_email = clean_input($_POST['guest_email'] ?? '');
+            $guest_phone = clean_input($_POST['guest_phone'] ?? '');
+
+            if (empty($guest_name) || empty($guest_email) || empty($guest_phone)) {
+                throw new Exception('Please provide your name, email, and phone number for guest checkout.');
+            }
+
+            // Check if existing customer record by email in this tenant
+            $chk = $conn->prepare("SELECT id, full_name FROM customers WHERE email = ? LIMIT 1");
+            $chk->execute([$guest_email]);
+            $existing = $chk->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing) {
+                $user_id = (int) $existing['id'];
+                $order_username = $guest_name;
+            } else {
+                $safe = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($guest_name));
+                $uname = 'guest_' . ($safe ?: 'cust') . '_' . substr(uniqid(), -5);
+                $ins = $conn->prepare("INSERT INTO customers (username, email, password, full_name, phone, type, created_at) VALUES (?, ?, ?, ?, ?, 'guest', NOW())");
+                $ins->execute([
+                    $uname,
+                    $guest_email,
+                    password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
+                    $guest_name,
+                    $guest_phone
+                ]);
+                $user_id = (int) $conn->lastInsertId();
+                $order_username = $guest_name;
+            }
+        } else {
+            $order_username = $current_customer['full_name'] ?: ($_SESSION['username'] ?? '');
+        }
+
         // Place order
         $order_ref = 'ORD-' . strtoupper(uniqid());
-        $user_id = $_SESSION['user_id'];
         $company_id = (!empty($_POST['selected_company_id'])) ? (int) $_POST['selected_company_id'] : null;
 
-        $stmt = $conn->prepare("INSERT INTO orders (user_id, company_id, order_reference, total, delivery_charge, delivery_zone_id) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$user_id, $company_id, $order_ref, $final_total, $delivery_charge, $delivery_zone_id]);
+        $stmt = $conn->prepare("INSERT INTO orders (user_id, company_id, order_reference, total, delivery_charge, delivery_zone_id, username) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $company_id, $order_ref, $final_total, $delivery_charge, $delivery_zone_id, $order_username]);
         $order_id = $conn->lastInsertId();
 
         foreach ($_SESSION['cart'] as $id => $qty) {
@@ -108,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['csrf']) && $_POST['csr
         send_order_notifications($order_id);
 
         unset($_SESSION['cart']);
-        header("Location: " . BASE_URL . "/orders/order_confirmation.php?ref=$order_ref");
+        header("Location: " . tenant_url("orders/order_confirmation.php?ref=" . urlencode($order_ref)));
         exit;
     } catch (Exception $e) {
         $conn->rollBack();
@@ -130,8 +172,54 @@ include 'includes/header.php';
             </div>
         <?php endif; ?>
 
+        <?php if ($is_guest): ?>
+            <!-- Guest Notice Banner -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <strong style="color: #1e293b; font-size: 1rem;"><i class="fas fa-user-circle" style="color: var(--primary-color);"></i> Have a customer account?</strong>
+                    <p style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.9rem;">Sign in to access saved addresses and track orders in your profile.</p>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <a href="<?php echo tenant_url('auth/login.php?redirect=' . urlencode('checkout.php')); ?>" class="btn" style="background: white; border: 1px solid #cbd5e1; padding: 0.5rem 1.1rem; border-radius: 6px; color: #334155; font-weight: 600; text-decoration: none; font-size: 0.9rem;">Sign In</a>
+                    <a href="<?php echo tenant_url('auth/register.php?redirect=' . urlencode('checkout.php')); ?>" class="btn" style="background: var(--primary-color); border: none; padding: 0.5rem 1.1rem; border-radius: 6px; color: white; font-weight: 600; text-decoration: none; font-size: 0.9rem;">Create Account</a>
+                </div>
+            </div>
+        <?php else: ?>
+            <!-- Logged In Status Banner -->
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1rem 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <span style="font-weight: 700; color: #166534;"><i class="fas fa-check-circle"></i> Ordering as:</span>
+                    <strong style="color: #15803d;"><?php echo htmlspecialchars($current_customer['full_name'] ?: $current_customer['username']); ?></strong>
+                    <span style="color: #86efac; margin: 0 0.3rem;">&bull;</span>
+                    <span style="color: #166534; font-size: 0.9rem;"><?php echo htmlspecialchars($current_customer['email']); ?></span>
+                </div>
+                <a href="<?php echo tenant_url('profile.php'); ?>" style="color: #15803d; font-size: 0.85rem; font-weight: 600; text-decoration: underline;">View Profile</a>
+            </div>
+        <?php endif; ?>
+
         <form method="POST" id="checkoutForm">
             <input type="hidden" name="csrf" value="<?php echo $_SESSION['csrf_token']; ?>">
+
+            <?php if ($is_guest): ?>
+                <!-- Guest Contact Details Section -->
+                <div style="background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 1.5rem; border: 1px solid #eee; margin-bottom: 2rem;">
+                    <h4 style="margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-id-card" style="color: var(--primary-color);"></i> Guest Contact Information</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 0.4rem;">Full Name *</label>
+                            <input type="text" name="guest_name" required placeholder="e.g. John Doe" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 0.4rem;">Email Address *</label>
+                            <input type="email" name="guest_email" required placeholder="john@example.com" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 0.4rem;">Phone Number *</label>
+                            <input type="tel" name="guest_phone" required placeholder="024 123 4567" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem;">
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <!-- Company Section (Left) & Delivery Section (Right) -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
@@ -359,7 +447,7 @@ include 'includes/header.php';
 
                 <div
                     style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 2px solid #f0f0f0; padding-top: 2rem;">
-                    <a href="<?php echo BASE_URL; ?>/cart.php"
+                    <a href="<?php echo tenant_url('cart.php'); ?>"
                         style="color: #666; text-decoration: none; font-weight: 600;">
                         <i class="fas fa-arrow-left"></i> Edit Cart
                     </a>

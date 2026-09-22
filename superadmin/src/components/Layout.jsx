@@ -151,29 +151,38 @@ export default function Layout() {
 
         <div className="sidebar-foot">
           {collapsed ? (
-            /* icon-only sign-out when collapsed */
-            <button
-              className="icon-btn"
-              onClick={logout}
-              title="Sign out"
-              aria-label="Sign out"
-              style={{ width: '100%', borderRadius: 'var(--radius-sm)' }}
-            >
-              ⏻
-            </button>
-          ) : (
-            <>
-              <div className="user-chip">
-                <Avatar name={user?.name} size={36} />
-                <div className="grow">
-                  <strong>{user?.name}</strong>
-                  <span className="muted small">{user?.email}</span>
-                </div>
+            <div className="sidebar-collapsed-foot">
+              <div title={`${user?.name} (${ROLE_LABELS[user?.role] || user?.role || 'Staff'})`}>
+                <Avatar name={user?.name} size={32} />
               </div>
-              <Button size="sm" variant="ghost" onClick={logout}>
-                Sign out
-              </Button>
-            </>
+              <button
+                className="sidebar-logout-icon"
+                onClick={logout}
+                title="Sign out"
+                aria-label="Sign out"
+              >
+                ⏻
+              </button>
+            </div>
+          ) : (
+            <div className="sidebar-user-card">
+              <Avatar name={user?.name} size={34} />
+              <div className="sidebar-user-details">
+                <strong className="sidebar-user-name" title={user?.name}>{user?.name}</strong>
+                <span className="sidebar-user-badge">
+                  {ROLE_LABELS[user?.role] || user?.role || 'Staff'}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="sidebar-logout-btn"
+                onClick={logout}
+                title="Sign out"
+                aria-label="Sign out"
+              >
+                <span className="sidebar-logout-icon-glyph">⏻</span>
+              </button>
+            </div>
           )}
         </div>
       </aside>

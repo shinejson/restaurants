@@ -39,7 +39,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     proxy: {
-      '/api': { target: 'http://localhost:8080', changeOrigin: true },
+      '/api': { target: process.env.VITE_API_PROXY || 'http://localhost:8080', changeOrigin: true },
+      '/restaurants/api': { target: process.env.VITE_API_PROXY || 'http://localhost:8080', changeOrigin: true },
+      '/restaurants/img': { target: process.env.VITE_API_PROXY || 'http://localhost:8080', changeOrigin: true },
+      '/img': { target: process.env.VITE_API_PROXY || 'http://localhost:8080', changeOrigin: true },
     },
   },
 });

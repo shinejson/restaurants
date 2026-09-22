@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // Enable error reporting for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -7,6 +7,12 @@ error_reporting(E_ALL);
 session_start();
 require_once 'config/db.php';
 require_once 'includes/functions.php';
+
+// If this is a request to the root platform without a tenant context, serve the SaaS Landing Page
+if (empty($_GET['__tenant']) && !\Resto\Tenancy\Links::usesHostRouting()) {
+    require_once __DIR__ . '/landing.php';
+    exit;
+}
 
 // Generate CSRF token if not exists
 if (!isset($_SESSION['csrf_token'])) {

@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $conn->prepare("INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)");
             if ($stmt->execute([$email, $token, $expiry])) {
                 // Send email
-                $reset_link = BASE_URL . "/auth/reset_password.php?token=" . $token . "&email=" . urlencode($email);
+                $reset_link = tenant_url("auth/reset_password.php?token=" . $token . "&email=" . urlencode($email));
 
                 $subject = "Password Reset Request";
                 $message = "
@@ -215,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <div class="auth-links">
-            <p>Remember your password? <a href="login.php">Sign in here</a></p>
+            <p>Remember your password? <a href="<?php echo tenant_url('auth/login.php'); ?>">Sign in here</a></p>
         </div>
     </div>
 </div>
