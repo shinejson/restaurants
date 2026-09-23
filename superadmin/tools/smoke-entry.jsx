@@ -42,7 +42,7 @@ const ROUTES = [
   { path: '/usage', expect: ['Usage', 'Orders', 'API calls', 'Aurora Kitchen'] },
   { path: '/audit', expect: ['Audit log', 'tenant.updated', 'Platform Owner'] },
   { path: '/team', expect: ['Platform team', 'Platform Owner', 'Role matrix'] },
-  { path: '/settings', expect: ['Platform settings', 'Platform name', 'Signups open'] },
+  { path: '/settings', expect: ['Platform settings', 'Platform name', 'Support email'] },
   { path: '/system', expect: ['System', '8.3.33', '0001_control_plane', 'Data volume'] },
 ];
 
