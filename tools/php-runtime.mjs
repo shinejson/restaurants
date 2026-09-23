@@ -13,7 +13,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+/**
+ * POSIX-form path for every path handed to the wasm VFS (chdir, scriptPath,
+ * documentRoot, ini values). Emscripten's FS only walks paths on "/", and PHP
+ * only treats paths starting with "/" as absolute — so a Windows drive path
+ * like C:\repo is exposed inside the wasm as /C:/repo. On POSIX systems this
+ * is a no-op and equals REPO_ROOT.
+ */
+const posixRoot = REPO_ROOT.split(path.sep).join('/');
+export const VFS_ROOT = posixRoot.startsWith('/') ? posixRoot : `/${posixRoot}`;
 export const STORAGE_DIR = path.join(REPO_ROOT, 'storage');
+/** Forward-slash storage path for PHP-side (wasm) consumers. */
+const VFS_STORAGE_DIR = `${VFS_ROOT}/storage`;
 
 /** Directories PHP needs to be able to write into. */
 function ensureWritableDirs() {
@@ -37,10 +48,11 @@ export const RUNTIME_INI = {
 	'display_errors': '1',
 	'error_reporting': 'E_ALL',
 	'log_errors': '1',
-	'error_log': path.join(STORAGE_DIR, 'logs', 'php-error.log'),
+	// PHP opens these from inside the wasm FS, so they must be forward-slashed.
+	'error_log': path.posix.join(VFS_STORAGE_DIR, 'logs', 'php-error.log'),
 	'date.timezone': 'UTC',
 	'memory_limit': '512M',
-	'session.save_path': path.join(STORAGE_DIR, 'sessions'),
+	'session.save_path': path.posix.join(VFS_STORAGE_DIR, 'sessions'),
 	'session.gc_maxlifetime': '86400',
 	'opcache.enable': '0',
 };
@@ -59,11 +71,12 @@ export async function bootPhp({ version = '8.3', processId = 42, quiet = false }
 
 	const php = new PHP(runtime);
 
-	// Mount the real repository inside the wasm filesystem at the same path.
-	if (!php.fileExists(REPO_ROOT)) {
-		php.mkdirTree(REPO_ROOT);
+	// Mount the real repository inside the wasm filesystem at the POSIX-style
+	// path (backslash paths from Windows cannot be walked by the emscripten FS).
+	if (!php.fileExists(VFS_ROOT)) {
+		php.mkdirTree(VFS_ROOT);
 	}
-	php.mount(REPO_ROOT, createNodeFsMountHandler(REPO_ROOT));
+	php.mount(VFS_ROOT, createNodeFsMountHandler(REPO_ROOT));
 
 	if (!quiet) {
 		const version_ = await php.run({ code: '<?php echo PHP_VERSION;' });
@@ -81,7 +94,7 @@ export async function bootPhp({ version = '8.3', processId = 42, quiet = false }
 export async function createRequestHandler(php, { port = 8080 } = {}) {
 	return new PHPRequestHandler({
 		php,
-		documentRoot: REPO_ROOT,
+		documentRoot: VFS_ROOT,
 		absoluteUrl: `http://localhost:${port}`,
 		rewriteRules: [
 			// Public JSON API consumed by the React superadmin console.

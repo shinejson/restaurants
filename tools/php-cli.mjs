@@ -4,7 +4,7 @@
  *   node tools/php-cli.mjs platform/cli/setup.php --fresh
  *   node tools/php-cli.mjs -r '<?php echo PHP_VERSION;'
  */
-import { bootPhp, REPO_ROOT } from './php-runtime.mjs';
+import { bootPhp, REPO_ROOT, VFS_ROOT } from './php-runtime.mjs';
 import path from 'node:path';
 
 const [target, ...args] = process.argv.slice(2);
@@ -18,18 +18,28 @@ const php = await bootPhp({ quiet: true });
 
 // PHP resolves relative includes against the working directory; the wasm
 // runtime starts at "/", so put the CLI where a shell would have been.
-const scriptDir = path.dirname(path.isAbsolute(target) ? target : path.join(REPO_ROOT, target));
-await php.chdir(target === '-r' || target === '--code' ? REPO_ROOT : scriptDir);
+// Paths handed to the wasm VFS need forward slashes and a leading "/" so PHP
+// treats them as absolute (drive paths like C:\… become /C:/…).
+const isSnippet = target === '-r' || target === '--code';
+const toVfs = (p) => {
+	const s = p.split(path.sep).join('/');
+	return s.startsWith('/') || /^[A-Za-z]:\//.test(s) ? (s.startsWith('/') ? s : `/${s}`) : s;
+};
+const scriptAbs = isSnippet
+	? null
+	: path.isAbsolute(target)
+		? toVfs(target)
+		: `${VFS_ROOT}/${toVfs(target)}`;
+await php.chdir(isSnippet ? VFS_ROOT : path.posix.dirname(scriptAbs));
 
-const response =
-	target === '-r' || target === '--code'
-		? await php.run({ code: args.join(' ') })
-		: await php.run({
-				scriptPath: path.isAbsolute(target) ? target : path.join(REPO_ROOT, target),
-				relativeUri: '/' + target,
-				argv: ['php', path.join(REPO_ROOT, target), ...args],
-				env: { PATH: '/usr/bin:/bin', REQUEST_METHOD: 'CLI' },
-			});
+const response = isSnippet
+	? await php.run({ code: args.join(' ') })
+	: await php.run({
+			scriptPath: scriptAbs,
+			relativeUri: '/' + toVfs(target),
+			argv: ['php', scriptAbs, ...args],
+			env: { PATH: '/usr/bin:/bin', REQUEST_METHOD: 'CLI' },
+		});
 
 const output = response.text;
 if (output.trim()) process.stdout.write(output.endsWith('\n') ? output : output + '\n');

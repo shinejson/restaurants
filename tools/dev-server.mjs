@@ -153,12 +153,15 @@ console.log(`   booted in ${Date.now() - started}ms`);
  */
 async function chdirToScript(pathname) {
 	const relDir = path.posix.dirname(pathname);
-	const target = path.join(REPO_ROOT, relDir === '/' ? '' : relDir);
-	const dir = fs.existsSync(target) && fs.statSync(target).isDirectory() ? target : REPO_ROOT;
+	const hostTarget = path.join(REPO_ROOT, relDir === '/' ? '' : relDir);
+	const dir = fs.existsSync(hostTarget) && fs.statSync(hostTarget).isDirectory() ? hostTarget : REPO_ROOT;
 
 	try {
 		const phpInstance = await requestHandler.getPrimaryPhp();
-		await phpInstance.chdir(dir);
+		// chdir runs inside the wasm FS, which only walks forward-slash paths
+		// starting with "/" (drive paths become /C:/…).
+		const vfsDir = dir.split(path.sep).join('/');
+		await phpInstance.chdir(vfsDir.startsWith('/') ? vfsDir : `/${vfsDir}`);
 	} catch (error) {
 		console.warn(`${stamp()} could not chdir to ${dir}:`, error?.message || error);
 	}
