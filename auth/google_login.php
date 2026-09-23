@@ -7,12 +7,16 @@ require_once '../includes/functions.php';
 // using CLIENT_ID and REDIRECT_URI.
 // Link: https://accounts.google.com/o/oauth2/v2/auth?...
 
-$client_id = get_setting('google_client_id', 'YOUR_GOOGLE_CLIENT_ID');
-$redirect_uri = BASE_URL . '/auth/google_callback.php';
+$client_id = get_setting('google_client_id', '');
+$enabled = get_setting('google_login_enabled', '0');
+$redirect_uri = tenant_url('auth/google_callback.php');
 
-if ($client_id === 'YOUR_GOOGLE_CLIENT_ID') {
-    die("Google Login is not configured. Please contact admin.");
+if ($enabled !== '1' || empty($client_id) || $client_id === 'YOUR_GOOGLE_CLIENT_ID') {
+    die("Google Login is not configured or disabled. Please contact admin.");
 }
+
+$state = bin2hex(random_bytes(16));
+$_SESSION['google_oauth_state'] = $state;
 
 $params = [
     'response_type' => 'code',
@@ -20,7 +24,8 @@ $params = [
     'redirect_uri' => $redirect_uri,
     'scope' => 'email profile',
     'access_type' => 'online',
-    'prompt' => 'select_account'
+    'prompt' => 'select_account',
+    'state' => $state,
 ];
 
 $auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query($params);

@@ -268,14 +268,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="fas fa-sign-in-alt"></i> Sign In
             </button>
 
+            <?php
+            $googleActive   = (get_setting('google_login_enabled', '0') === '1') && !empty(get_setting('google_client_id'));
+            $facebookActive = (get_setting('facebook_login_enabled', '0') === '1') && !empty(get_setting('facebook_app_id'));
+            $appleActive    = (get_setting('apple_login_enabled', '0') === '1') && !empty(get_setting('apple_client_id'));
+            $twitterActive  = (get_setting('twitter_login_enabled', '0') === '1') && !empty(get_setting('twitter_client_id'));
+
+            $hasActiveSocials = $googleActive || $facebookActive || $appleActive || $twitterActive;
+            ?>
+
+            <?php if ($hasActiveSocials): ?>
             <div style="text-align: center; margin: 1.5rem 0; position: relative;">
                 <hr style="border: 0; border-top: 1px solid #eee;">
-                <span
-                    style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; color: #666; font-size: 0.9rem;">or
-                    continue with</span>
+                <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; color: #666; font-size: 0.9rem;">or continue with</span>
             </div>
 
-            <div style="display: grid; gap: 1rem;">
+            <div style="display: grid; gap: 0.85rem;">
+                <?php if ($googleActive): ?>
                 <!-- Google Login -->
                 <a href="<?php echo tenant_url('auth/google_login.php'); ?>" class="btn-social"
                     style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0.8rem; background: white; border: 1px solid #ddd; border-radius: 4px; color: #444; font-weight: 500; text-decoration: none; transition: all 0.2s;">
@@ -283,14 +292,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         style="width: 20px; height: 20px;">
                     Continue with Gmail
                 </a>
+                <?php endif; ?>
 
+                <?php if ($facebookActive): ?>
+                <!-- Facebook Login -->
+                <a href="<?php echo tenant_url('auth/facebook_login.php'); ?>" class="btn-social"
+                    style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0.8rem; background: #1877F2; border: 1px solid #1877F2; border-radius: 4px; color: white; font-weight: 500; text-decoration: none; transition: all 0.2s;">
+                    <i class="fab fa-facebook-f" style="font-size: 1.15rem;"></i>
+                    Continue with Facebook
+                </a>
+                <?php endif; ?>
+
+                <?php if ($appleActive): ?>
                 <!-- Apple Login -->
                 <a href="<?php echo tenant_url('auth/apple_login.php'); ?>" class="btn-social"
                     style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0.8rem; background: #000; border: 1px solid #000; border-radius: 4px; color: white; font-weight: 500; text-decoration: none; transition: all 0.2s;">
                     <i class="fab fa-apple" style="font-size: 1.2rem;"></i>
                     Continue with iPhone
                 </a>
+                <?php endif; ?>
+
+                <?php if ($twitterActive): ?>
+                <!-- Twitter / X Login -->
+                <a href="<?php echo tenant_url('auth/twitter_login.php'); ?>" class="btn-social"
+                    style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0.8rem; background: #0f1419; border: 1px solid #0f1419; border-radius: 4px; color: white; font-weight: 500; text-decoration: none; transition: all 0.2s;">
+                    <i class="fab fa-x-twitter" style="font-size: 1.15rem;"></i>
+                    Continue with X
+                </a>
+                <?php endif; ?>
             </div>
+            <?php endif; ?>
         </form>
 
         <div class="auth-links">

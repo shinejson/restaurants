@@ -126,12 +126,46 @@ include 'includes/header.php';
 }
 </script>
 
+<?php
+$hasHeroCustomization = function_exists('feature_enabled') && feature_enabled('hero_customization');
+$customHeroTitle = $hasHeroCustomization ? get_setting('hero_title') : '';
+$customHeroSubtitle = $hasHeroCustomization ? get_setting('hero_subtitle') : '';
+$customHeroCtaText = $hasHeroCustomization ? get_setting('hero_cta_text') : '';
+$customHeroCtaLink = $hasHeroCustomization ? get_setting('hero_cta_link') : '';
+$customHeroImage = $hasHeroCustomization ? get_setting('hero_image') : '';
+
+$isCustomHero = !empty($customHeroTitle) || !empty($customHeroImage);
+?>
 <!-- Hero Carousel -->
 <div class="hero-header">
     <div class="hero-carousel-container container">
+        <?php if ($isCustomHero):
+            $heroImgSrc = !empty($customHeroImage)
+                ? (strpos($customHeroImage, 'http') === 0 ? $customHeroImage : BASE_URL . '/' . ltrim($customHeroImage, '/'))
+                : 'assets/images/hero-burger.png';
+            $ctaHref = !empty($customHeroCtaLink)
+                ? ((strpos($customHeroCtaLink, 'http') === 0 || strpos($customHeroCtaLink, '#') === 0) ? $customHeroCtaLink : tenant_url($customHeroCtaLink))
+                : 'menu.php';
+            $ctaLabel = !empty($customHeroCtaText) ? $customHeroCtaText : 'Book A Table';
+        ?>
         <div class="hero-slide active">
             <div class="hero-text">
-                                <h1>Enjoy Our<br>Delicious Meal</h1>
+                <h1><?php echo nl2br(htmlspecialchars($customHeroTitle ?: 'Enjoy Our<br>Delicious Meal')); ?></h1>
+                <?php if (!empty($customHeroSubtitle)): ?>
+                    <p><?php echo htmlspecialchars($customHeroSubtitle); ?></p>
+                <?php else: ?>
+                    <p><?php echo htmlspecialchars($meta['tagline']); ?></p>
+                <?php endif; ?>
+                <a href="<?php echo htmlspecialchars($ctaHref); ?>" class="btn btn-hero"><?php echo htmlspecialchars($ctaLabel); ?></a>
+            </div>
+            <div class="hero-img">
+                <img src="<?php echo htmlspecialchars($heroImgSrc); ?>" alt="<?php echo htmlspecialchars($meta['name']); ?>">
+            </div>
+        </div>
+        <?php else: ?>
+        <div class="hero-slide active">
+            <div class="hero-text">
+                <h1>Enjoy Our<br>Delicious Meal</h1>
                 <p><?php echo htmlspecialchars($meta['tagline']); ?></p>
                 <a href="menu.php" class="btn btn-hero">Book A Table</a>
             </div>
@@ -150,9 +184,11 @@ include 'includes/header.php';
                 <img src="assets/images/hero-burger.png" alt="Hero Burger">
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 
+<?php if (get_setting('section_show_services', '1') !== '0'): ?>
 <!-- Service Section -->
 <section class="container service-section">
     <div class="service-grid">
@@ -178,7 +214,9 @@ include 'includes/header.php';
         </div>
     </div>
 </section>
+<?php endif; ?>
 
+<?php if (get_setting('section_show_about', '1') !== '0'): ?>
 <!-- About Section -->
 <section class="container about-section">
     <div class="about-grid">
@@ -189,7 +227,7 @@ include 'includes/header.php';
         </div>
         <div class="about-content">
             <h5 class="section-subtitle">About Us</h5>
-                        <h1 class="section-title">Welcome to <i class="fas fa-utensils"></i> <?php echo htmlspecialchars($meta['name']); ?></h1>
+            <h1 class="section-title">Welcome to <i class="fas fa-utensils"></i> <?php echo htmlspecialchars($meta['name']); ?></h1>
             <p>Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit.
                 Aliqu diam amet diam et eos erat ipsum et lorem et sit, sed stet lorem sit.</p>
             <p>Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit.
@@ -211,6 +249,7 @@ include 'includes/header.php';
         </div>
     </div>
 </section>
+<?php endif; ?>
 
 <!-- Featured Items (Menu) -->
 <section class="container food-menu-section">
@@ -264,39 +303,18 @@ include 'includes/header.php';
             <p>Try a different search or choose another category above.</p>
         </div>
     <?php else: ?>
-        <div class="menu-grid">
+        <?php
+        $menuLayout = (function_exists('feature_enabled') && feature_enabled('menu_card_styles')) ? get_setting('menu_card_layout', 'grid') : 'grid';
+        $layoutClass = 'menu-grid';
+        if ($menuLayout === 'bistro') {
+            $layoutClass .= ' layout-bistro';
+        } elseif ($menuLayout === 'compact') {
+            $layoutClass .= ' layout-compact';
+        }
+        ?>
+        <div class="<?php echo $layoutClass; ?>">
             <?php foreach ($items as $item): ?>
-                <div class="food-card">
-                    <div class="food-img-container">
-                        <?php $image = !empty($item['image_url']) ? htmlspecialchars($item['image_url']) : BASE_URL . '/assets/images/food-placeholder.jpg'; ?>
-                        <img src="<?php echo $image; ?>" alt="<?php echo htmlspecialchars($item['item_name']); ?>"
-                            class="food-img">
-                        <span class="food-badge"><?php echo htmlspecialchars($item['main_category']); ?></span>
-                    </div>
-                    <div class="food-content">
-                        <h5 class="food-title"><?php echo htmlspecialchars($item['item_name']); ?></h5>
-                        <p class="food-description">
-                            <?php
-                            $desc = isset($item['description']) ? $item['description'] : '';
-                            echo strlen($desc) > 50 ? substr(htmlspecialchars($desc), 0, 50) . '...' : htmlspecialchars($desc);
-                            ?>
-                        </p>
-                        <div class="food-price">
-                            <?php if (!empty($item['promo_price'])): ?>
-                                <span class="original-price"><?php echo format_currency($item['price']); ?></span>
-                                <span class="promo-price"><?php echo format_currency($item['promo_price']); ?></span>
-                            <?php else: ?>
-                                <?php echo format_currency($item['price']); ?>
-                            <?php endif; ?>
-                        </div>
-                        <button class="add-to-cart-btn" data-id="<?php echo $item['id']; ?>"
-                            data-name="<?php echo htmlspecialchars($item['item_name']); ?>"
-                            data-price="<?php echo !empty($item['promo_price']) ? $item['promo_price'] : $item['price']; ?>"
-                            data-image="<?php echo $image; ?>">
-                            <i class="fas fa-cart-plus"></i>
-                        </button>
-                    </div>
-                </div>
+                <?php include 'includes/menu_card.php'; ?>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
@@ -307,6 +325,7 @@ include 'includes/header.php';
     </div>
 </section>
 
+<?php if (get_setting('section_show_testimonials', '1') !== '0'): ?>
 <!-- Testimonials -->
 <section class="container" style="margin-bottom: 6rem;">
     <div style="text-align: center; margin-bottom: 3rem;">
@@ -366,6 +385,7 @@ include 'includes/header.php';
         </div>
     </div>
 </section>
+<?php endif; ?>
 
 <script>
     // AJAX filtering for category tabs & search (prevents page jump to top on filter)
@@ -398,6 +418,10 @@ include 'includes/header.php';
             return 'index.php' + (qs ? '?' + qs : '');
         }
 
+        const MENU_LAYOUT = '<?php echo (function_exists('feature_enabled') && feature_enabled('menu_card_styles')) ? get_setting('menu_card_layout', 'grid') : 'grid'; ?>';
+        const SHOW_DIETARY = <?php echo (function_exists('feature_enabled') && feature_enabled('menu_card_styles') && get_setting('menu_show_dietary_badges', '1') !== '0') ? 'true' : 'false'; ?>;
+        const SHOW_CALORIES = <?php echo (function_exists('feature_enabled') && feature_enabled('menu_card_styles') && get_setting('menu_show_calories', '0') === '1') ? 'true' : 'false'; ?>;
+
         function renderItems(items) {
             if (!items.length) {
                 wrapper.innerHTML = `
@@ -419,20 +443,82 @@ include 'includes/header.php';
                 const price = item.promo_formatted
                     ? `<span class="original-price">${escapeHtml(item.price_formatted)}</span><span class="promo-price">${escapeHtml(item.promo_formatted)}</span>`
                     : escapeHtml(item.price_formatted);
+                const activePrice = item.promo_price ? item.promo_price : item.price;
+
+                let badgesHtml = '';
+                if (SHOW_DIETARY) {
+                    let badges = [];
+                    if (item.is_vegetarian == 1) badges.push('<span class="badge-diet veg"><i class="fas fa-leaf"></i> Veg</span>');
+                    if (item.is_spicy == 1) badges.push('<span class="badge-diet spicy"><i class="fas fa-pepper-hot"></i> Spicy</span>');
+                    if (SHOW_CALORIES && item.calories > 0) badges.push('<span class="badge-diet cal">' + escapeHtml(item.calories) + ' kcal</span>');
+                    if (badges.length) badgesHtml = '<div class="dietary-badges-row">' + badges.join('') + '</div>';
+                }
+
+                if (MENU_LAYOUT === 'bistro') {
+                    return `
+                    <div class="food-card-bistro">
+                        <img src="${escapeHtml(image)}" alt="${escapeHtml(item.item_name)}" class="bistro-thumb">
+                        <div class="bistro-details">
+                            <div class="bistro-header">
+                                <h5 class="bistro-title">${escapeHtml(item.item_name)}</h5>
+                                <span class="bistro-dots"></span>
+                                <span class="bistro-price">${price}</span>
+                            </div>
+                            <p class="bistro-desc">${desc}</p>
+                            ${badgesHtml}
+                        </div>
+                        <button class="add-to-cart-btn" data-id="${escapeHtml(item.id)}"
+                            data-name="${escapeHtml(item.item_name)}"
+                            data-price="${escapeHtml(activePrice)}"
+                            data-image="${escapeHtml(image)}" title="Add to Cart">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>`;
+                }
+
+                if (MENU_LAYOUT === 'compact') {
+                    return `
+                    <div class="food-card-compact">
+                        <img src="${escapeHtml(image)}" alt="${escapeHtml(item.item_name)}" class="compact-thumb">
+                        <div class="compact-body">
+                            <h5 class="compact-title">${escapeHtml(item.item_name)}</h5>
+                            <p class="compact-desc">${desc}</p>
+                            ${badgesHtml}
+                            <div class="compact-foot">
+                                <div class="compact-price">${price}</div>
+                                <button class="add-to-cart-btn" data-id="${escapeHtml(item.id)}"
+                                    data-name="${escapeHtml(item.item_name)}"
+                                    data-price="${escapeHtml(activePrice)}"
+                                    data-image="${escapeHtml(image)}" title="Add to Cart">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+
+                // Default standard grid
+                let promoBadge = '';
+                if (item.promo_price && item.price > item.promo_price) {
+                    const pct = Math.round(((item.price - item.promo_price) / item.price) * 100);
+                    promoBadge = `<span class="badge-promo-tag">${pct}% OFF</span>`;
+                }
 
                 return `
                 <div class="food-card">
                     <div class="food-img-container">
                         <img src="${escapeHtml(image)}" alt="${escapeHtml(item.item_name)}" class="food-img">
                         <span class="food-badge">${escapeHtml(item.main_category)}</span>
+                        ${promoBadge}
                     </div>
                     <div class="food-content">
                         <h5 class="food-title">${escapeHtml(item.item_name)}</h5>
                         <p class="food-description">${desc}</p>
+                        ${badgesHtml}
                         <div class="food-price">${price}</div>
                         <button class="add-to-cart-btn" data-id="${escapeHtml(item.id)}"
                             data-name="${escapeHtml(item.item_name)}"
-                            data-price="${escapeHtml(item.promo_price ? item.promo_price : item.price)}"
+                            data-price="${escapeHtml(activePrice)}"
                             data-image="${escapeHtml(image)}">
                             <i class="fas fa-cart-plus"></i>
                         </button>
@@ -440,7 +526,11 @@ include 'includes/header.php';
                 </div>`;
             });
 
-            wrapper.innerHTML = `<div class="menu-grid">${cards.join('')}</div>`;
+            let gridClass = 'menu-grid';
+            if (MENU_LAYOUT === 'bistro') gridClass += ' layout-bistro';
+            else if (MENU_LAYOUT === 'compact') gridClass += ' layout-compact';
+
+            wrapper.innerHTML = `<div class="${gridClass}">${cards.join('')}</div>`;
         }
 
         function setActiveTab(category) {

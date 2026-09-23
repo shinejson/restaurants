@@ -22,7 +22,7 @@ return [
                 'price_monthly' => 79, 'price_yearly' => 790, 'trial_days' => 14, 'sort_order' => 2,
                 'badge' => 'Most popular', 'accent_color' => '#6366f1',
                 'limits' => ['staff_users' => 15, 'menu_items' => 400, 'orders' => 5000, 'tables' => 60, 'locations' => 2, 'storage_mb' => 4096, 'api_calls' => 5000, 'email_sends' => 5000],
-                'features' => ['online_ordering' => true, 'pos' => true, 'table_service' => true, 'delivery' => true, 'events' => true, 'reports' => true, 'customers_crm' => true, 'printing' => true, 'tax_engine' => true, 'staff_roles' => true, 'multi_location' => true],
+                'features' => ['online_ordering' => true, 'pos' => true, 'table_service' => true, 'delivery' => true, 'events' => true, 'reports' => true, 'customers_crm' => true, 'printing' => true, 'tax_engine' => true, 'staff_roles' => true, 'multi_location' => true, 'theme_customization' => true, 'menu_card_styles' => true, 'hero_customization' => true, 'announcement_banner' => true],
             ],
             [
                 'code' => 'pro', 'name' => 'Pro', 'tagline' => 'For multi-site groups that need integrations',
@@ -30,7 +30,7 @@ return [
                 'price_monthly' => 199, 'price_yearly' => 1990, 'trial_days' => 21, 'sort_order' => 3,
                 'badge' => null, 'accent_color' => '#8b5cf6',
                 'limits' => ['staff_users' => 60, 'menu_items' => -1, 'orders' => 25000, 'tables' => -1, 'locations' => 10, 'storage_mb' => 20480, 'api_calls' => 50000, 'email_sends' => 25000],
-                'features' => ['online_ordering' => true, 'pos' => true, 'table_service' => true, 'delivery' => true, 'events' => true, 'reports' => true, 'customers_crm' => true, 'printing' => true, 'tax_engine' => true, 'staff_roles' => true, 'multi_location' => true, 'api_access' => true, 'custom_domain' => true, 'white_label' => true, 'priority_support' => true],
+                'features' => ['online_ordering' => true, 'pos' => true, 'table_service' => true, 'delivery' => true, 'events' => true, 'reports' => true, 'customers_crm' => true, 'printing' => true, 'tax_engine' => true, 'staff_roles' => true, 'multi_location' => true, 'api_access' => true, 'custom_domain' => true, 'white_label' => true, 'priority_support' => true, 'theme_customization' => true, 'menu_card_styles' => true, 'hero_customization' => true, 'announcement_banner' => true, 'custom_css' => true],
             ],
             [
                 'code' => 'enterprise', 'name' => 'Enterprise', 'tagline' => 'Franchise and hospitality groups',
@@ -38,7 +38,7 @@ return [
                 'price_monthly' => 499, 'price_yearly' => 4990, 'trial_days' => 30, 'sort_order' => 4,
                 'badge' => 'Custom', 'accent_color' => '#f59e0b',
                 'limits' => ['staff_users' => -1, 'menu_items' => -1, 'orders' => -1, 'tables' => -1, 'locations' => -1, 'storage_mb' => -1, 'api_calls' => -1, 'email_sends' => -1],
-                'features' => ['online_ordering' => true, 'pos' => true, 'table_service' => true, 'delivery' => true, 'events' => true, 'reports' => true, 'customers_crm' => true, 'printing' => true, 'tax_engine' => true, 'staff_roles' => true, 'multi_location' => true, 'api_access' => true, 'custom_domain' => true, 'white_label' => true, 'priority_support' => true],
+                'features' => ['online_ordering' => true, 'pos' => true, 'table_service' => true, 'delivery' => true, 'events' => true, 'reports' => true, 'customers_crm' => true, 'printing' => true, 'tax_engine' => true, 'staff_roles' => true, 'multi_location' => true, 'api_access' => true, 'custom_domain' => true, 'white_label' => true, 'priority_support' => true, 'theme_customization' => true, 'menu_card_styles' => true, 'hero_customization' => true, 'announcement_banner' => true, 'custom_css' => true],
             ],
         ];
 

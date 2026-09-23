@@ -94,9 +94,12 @@ $price_range = $price_stmt->fetch();
 $min_db_price = $price_range['min_price'] ?? 0;
 $max_db_price = $price_range['max_price'] ?? 1000;
 
+// Gather tenant-aware display metadata
+$meta = tenant_meta();
+
 // SEO Meta Tags
-$page_title = "Full Menu | Airport West Hotel";
-$page_description = "Explore our diverse menu featuring local Ghanaian dishes, continental cuisine, vegetarian options, and more. Order online for fast delivery.";
+$page_title = "Full Menu | " . $meta['name'];
+$page_description = "Explore our diverse menu featuring delicious options at " . $meta['name'] . ". Order online for fast delivery or dine-in.";
 
 include 'includes/header.php';
 ?>
@@ -106,7 +109,7 @@ include 'includes/header.php';
 {
   "@context": "https://schema.org",
   "@type": "Menu",
-  "name": "Airport West Hotel Menu",
+  "name": "<?php echo htmlspecialchars($meta['name']); ?> Menu",
   "url": "<?php echo BASE_URL; ?>/menu.php",
   "mainEntityOfPage": "<?php echo BASE_URL; ?>/menu.php",
   "inLanguage": "en",
@@ -281,38 +284,18 @@ include 'includes/header.php';
                         <h1 class="section-title"><?php echo htmlspecialchars($category_name); ?></h1>
                     </div>
 
-                    <div class="menu-grid">
+                    <?php
+                    $menuLayout = (function_exists('feature_enabled') && feature_enabled('menu_card_styles')) ? get_setting('menu_card_layout', 'grid') : 'grid';
+                    $layoutClass = 'menu-grid';
+                    if ($menuLayout === 'bistro') {
+                        $layoutClass .= ' layout-bistro';
+                    } elseif ($menuLayout === 'compact') {
+                        $layoutClass .= ' layout-compact';
+                    }
+                    ?>
+                    <div class="<?php echo $layoutClass; ?>">
                         <?php foreach ($category_items as $item): ?>
-                            <div class="food-card">
-                                <div class="food-img-container">
-                                    <?php $image = !empty($item['image_url']) ? htmlspecialchars($item['image_url']) : 'assets/images/food-placeholder.jpg'; ?>
-                                    <img src="<?php echo $image; ?>" alt="<?php echo htmlspecialchars($item['item_name']); ?>"
-                                        class="food-img">
-                                </div>
-                                <div class="food-content">
-                                    <h5 class="food-title"><?php echo htmlspecialchars($item['item_name']); ?></h5>
-                                    <p class="food-description">
-                                        <?php
-                                        $desc = isset($item['description']) ? $item['description'] : '';
-                                        echo strlen($desc) > 80 ? substr(htmlspecialchars($desc), 0, 80) . '...' : htmlspecialchars($desc);
-                                        ?>
-                                    </p>
-                                    <div class="food-price">
-                                        <?php if (!empty($item['promo_price'])): ?>
-                                            <span class="original-price"><?php echo format_currency($item['price']); ?></span>
-                                            <span class="promo-price"><?php echo format_currency($item['promo_price']); ?></span>
-                                        <?php else: ?>
-                                            <?php echo format_currency($item['price']); ?>
-                                        <?php endif; ?>
-                                    </div>
-                                    <button class="add-to-cart-btn" data-id="<?php echo $item['id']; ?>"
-                                        data-name="<?php echo htmlspecialchars($item['item_name']); ?>"
-                                        data-price="<?php echo !empty($item['promo_price']) ? $item['promo_price'] : $item['price']; ?>"
-                                        data-image="<?php echo $image; ?>">
-                                        <i class="fas fa-cart-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
+                            <?php include 'includes/menu_card.php'; ?>
                         <?php endforeach; ?>
                     </div>
                 </div>

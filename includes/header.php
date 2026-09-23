@@ -39,9 +39,59 @@
         const BASE_URL = '<?php echo BASE_URL; ?>';
     </script>
 
+    <?php
+    $hasThemeCustomization = function_exists('feature_enabled') && feature_enabled('theme_customization');
+    $primaryColor = $hasThemeCustomization ? get_setting('theme_primary_color') : '';
+    $secondaryColor = $hasThemeCustomization ? get_setting('theme_secondary_color') : '';
+    $cardRadius = $hasThemeCustomization ? get_setting('theme_card_radius') : '';
+    if ($primaryColor || $secondaryColor || $cardRadius):
+    ?>
+    <style id="tenant-theme-variables">
+        :root {
+            <?php if ($primaryColor): ?>--primary-color: <?php echo htmlspecialchars($primaryColor); ?>;<?php endif; ?>
+            <?php if ($secondaryColor): ?>--secondary-color: <?php echo htmlspecialchars($secondaryColor); ?>;<?php endif; ?>
+            <?php if ($cardRadius): ?>--card-radius: <?php echo htmlspecialchars($cardRadius); ?>;<?php endif; ?>
+        }
+    </style>
+    <?php endif; ?>
+
+    <?php
+    $hasCustomCss = function_exists('feature_enabled') && feature_enabled('custom_css');
+    $customCssRules = $hasCustomCss ? get_setting('custom_css_rules') : '';
+    if (!empty($customCssRules)):
+    ?>
+    <style id="tenant-custom-css">
+        <?php echo strip_tags($customCssRules); ?>
+    </style>
+    <?php endif; ?>
+
 </head>
 
 <body>
+    <?php
+    $hasBanner = function_exists('feature_enabled') && feature_enabled('announcement_banner');
+    $bannerEnabled = $hasBanner ? get_setting('promo_banner_enabled', '0') : '0';
+    $bannerText = $hasBanner ? get_setting('promo_banner_text', '') : '';
+    $bannerCtaText = $hasBanner ? get_setting('promo_banner_cta_text', '') : '';
+    $bannerCtaLink = $hasBanner ? get_setting('promo_banner_cta_link', '') : '';
+
+    if ($bannerEnabled === '1' && !empty($bannerText)):
+        $ctaUrl = '';
+        if (!empty($bannerCtaLink)) {
+            $ctaUrl = (strpos($bannerCtaLink, 'http://') === 0 || strpos($bannerCtaLink, 'https://') === 0 || strpos($bannerCtaLink, '#') === 0)
+                ? $bannerCtaLink
+                : tenant_url($bannerCtaLink);
+        }
+    ?>
+    <div class="announcement-bar">
+        <div class="container announcement-bar-content">
+            <span class="announcement-text"><i class="fas fa-bullhorn"></i> <?php echo htmlspecialchars($bannerText); ?></span>
+            <?php if (!empty($bannerCtaText) && !empty($ctaUrl)): ?>
+                <a href="<?php echo htmlspecialchars($ctaUrl); ?>" class="announcement-cta"><?php echo htmlspecialchars($bannerCtaText); ?> &rarr;</a>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
     <!-- Header -->
     <header class="main-header">
         <div class="container">

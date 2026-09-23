@@ -213,9 +213,14 @@ $can_see_settings_group = has_permission('manage_customers') || has_permission('
                             <i class="fas fa-truck-loading"></i><span class="menu-text">Delivery Zones</span>
                         </a>
                     </li>
-                    <li class="<?php echo $current_page == 'settings.php' ? 'active' : ''; ?>">
+                    <li class="<?php echo ($current_page == 'settings.php' && ($_GET['tab'] ?? '') != 'storefront') ? 'active' : ''; ?>">
                         <a href="<?php echo BASE_URL; ?>/admin/settings.php">
-                            <i class="fas fa-cog"></i><span class="menu-text">Settings</span>
+                            <i class="fas fa-cog"></i><span class="menu-text">General Settings</span>
+                        </a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'settings.php' && ($_GET['tab'] ?? '') == 'storefront') ? 'active' : ''; ?>">
+                        <a href="<?php echo BASE_URL; ?>/admin/settings.php?tab=storefront">
+                            <i class="fas fa-palette"></i><span class="menu-text">Storefront &amp; Theme</span>
                         </a>
                     </li>
                     <li class="<?php echo $current_page == 'billing.php' ? 'active' : ''; ?>">

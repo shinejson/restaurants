@@ -44,6 +44,8 @@ final class TenantSchema
                     'type'              => ['string', 24, 'default' => 'customer'],
                     'google_id'         => ['string', 191, 'null'],
                     'apple_id'          => ['string', 191, 'null'],
+                    'facebook_id'       => ['string', 191, 'null'],
+                    'twitter_id'        => ['string', 191, 'null'],
                     'status'            => ['string', 24, 'default' => 'active'],
                     'email_verified_at' => ['datetime', 'null'],
                     'created_at'        => ['datetime', 'default' => 'CURRENT_TIMESTAMP'],

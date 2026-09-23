@@ -44,6 +44,11 @@ final class Features
         'custom_domain'    => ['label' => 'Custom domain', 'description' => 'Serve the storefront on your own domain', 'group' => 'Platform'],
         'white_label'      => ['label' => 'White label', 'description' => 'Remove RestaurantOS branding from receipts and pages', 'group' => 'Platform'],
         'priority_support' => ['label' => 'Priority support', 'description' => 'Same-day support response target', 'group' => 'Platform'],
+        'theme_customization' => ['label' => 'Theme & brand colours', 'description' => 'Customise storefront primary and accent colours and fonts', 'group' => 'Storefront'],
+        'menu_card_styles'    => ['label' => 'Menu card layouts & badges', 'description' => 'Switch between Modern Grid, Bistro List, and Fast-Food Compact card styles', 'group' => 'Storefront'],
+        'hero_customization'  => ['label' => 'Hero banner builder', 'description' => 'Custom hero banner image, headline, and call-to-action buttons', 'group' => 'Storefront'],
+        'announcement_banner' => ['label' => 'Announcement bar', 'description' => 'Display a promotional top alert banner on your storefront', 'group' => 'Storefront'],
+        'custom_css'          => ['label' => 'Custom CSS & scripts', 'description' => 'Inject custom CSS and head tracking scripts', 'group' => 'Storefront'],
     ];
 
     /** Metric key => metadata for metered limits. */

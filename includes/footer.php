@@ -107,8 +107,13 @@ $linkedin = htmlspecialchars(get_setting('social_linkedin', '#'));
             <p>&copy; <?php echo date('Y'); ?> <strong><?php echo $company_name; ?></strong>. All Rights Reserved.</p>
             <div class="footer-bottom-links">
                 <a href="<?php echo tenant_url('contact.php'); ?>">Support</a>
+                <?php
+                $hideWatermark = function_exists('feature_enabled') && feature_enabled('white_label') && (get_setting('white_label_enabled', '0') === '1');
+                if (!$hideWatermark):
+                ?>
                 <span class="sep">&bull;</span>
                 <span class="powered-badge">Powered by <span>RestaurantOS</span></span>
+                <?php endif; ?>
             </div>
         </div>
     </div>
