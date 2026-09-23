@@ -141,12 +141,12 @@ $can_see_settings_group = has_permission('manage_customers') || has_permission('
                     </li>
                     <li class="<?php echo $current_page == 'take_order.php' ? 'active' : ''; ?>">
                         <a href="<?php echo BASE_URL; ?>/admin/orders/take_order.php">
-                            <i class="fas fa-cash-register"></i><span class="menu-text">Take Order</span>
+                            <i class="fas fa-cash-register"></i><span class="menu-text">POS</span>
                         </a>
                     </li>
                     <li class="<?php echo $current_page == 'guest_table_order.php' ? 'active' : ''; ?>">
                         <a href="<?php echo BASE_URL; ?>/admin/orders/guest_table_order.php">
-                            <i class="fas fa-concierge-bell"></i><span class="menu-text">Guest Table Order</span>
+                            <i class="fas fa-concierge-bell"></i><span class="menu-text">Guest POS</span>
                         </a>
                     </li>
                     <li class="<?php echo $current_page == 'kiosk.php' ? 'active' : ''; ?>">

@@ -43,6 +43,15 @@ $subscription = $subscriptions->forTenant($tenant->id());
 $currentPlan  = $gate->plan();
 $currency     = (string) $tenant->get('currency', 'USD');
 
+$tenantAddress = trim((string) (
+    $tenant->get('billing_address')
+    ?? $tenant->get('address')
+    ?? $tenant->get('street_address')
+    ?? $tenant->get('contact_address')
+    ?? ''
+));
+$billingAddressText = $tenantAddress !== '' ? $tenant->name() . ' — ' . $tenantAddress : $tenant->name();
+
 $notice = null;
 $error  = null;
 
@@ -145,6 +154,29 @@ include 'includes/admin_header.php';
     .plan-features { list-style:none; padding:0; margin:.6rem 0 1rem; font-size:.85rem }
     .plan-features li { padding:.2rem 0 }
     .plan-features li::before { content:'✓'; color:#10b981; font-weight:700; margin-right:.5rem }
+    .plan-actions { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center }
+    .plan-switch, .plan-cancel {
+        display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+        border-radius:12px; padding:.72rem 1rem; font-weight:700; line-height:1.2;
+        transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+        cursor:pointer; border:1px solid transparent;
+    }
+    .plan-switch:hover, .plan-cancel:hover { transform:translateY(-1px); }
+    .plan-switch {
+        background:linear-gradient(135deg,#f97316,#ea580c); color:#fff; box-shadow:0 8px 16px -12px rgba(249,115,22,.9);
+    }
+    .plan-switch.secondary {
+        background:#fff; border-color:var(--border-color,#dfe3ea); color:#1f2937; box-shadow:none;
+    }
+    .plan-cancel {
+        background:#fff; border-color:#fca5a5; color:#b91c1c; box-shadow:none;
+    }
+    .plan-switch:disabled {
+        opacity:.7; cursor:default; transform:none; box-shadow:none;
+    }
+    .billing-address {
+        margin-top:.5rem; color:var(--text-muted,#6b7280); font-size:.82rem;
+    }
 </style>
 
 <div class="content-header">
@@ -156,6 +188,9 @@ include 'includes/admin_header.php';
             <?php if ($tenant->onTrial()): ?>
                 · trial ends in <?php echo (int) $tenant->trialDaysLeft(); ?> day(s)
             <?php endif; ?>
+        </p>
+        <p class="billing-address">
+            Billing address: <?php echo htmlspecialchars($billingAddressText); ?>
         </p>
     </div>
 </div>
@@ -287,15 +322,14 @@ include 'includes/admin_header.php';
             <?php if ($isCurrent): ?>
                 <button class="btn-primary" type="button" disabled style="opacity:.6;cursor:default">Current plan</button>
             <?php else: ?>
-                <form method="post" style="display:flex;gap:.5rem;flex-wrap:wrap">
+                <form method="post" class="plan-actions">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) $_SESSION['csrf_token']); ?>">
                     <input type="hidden" name="action" value="<?php echo $subscription === null ? 'activate' : 'change_plan'; ?>">
                     <input type="hidden" name="plan_id" value="<?php echo (int) $plan->id(); ?>">
-                    <button class="btn-primary" name="billing_cycle" value="monthly" type="submit">
+                    <button class="plan-switch" name="billing_cycle" value="monthly" type="submit">
                         <?php echo $subscription === null ? 'Activate' : 'Switch'; ?> monthly
                     </button>
-                    <button class="btn-icon" name="billing_cycle" value="yearly" type="submit"
-                            style="border:1px solid var(--border-color,#e5e7eb);border-radius:10px;padding:.55rem .9rem;background:#fff">
+                    <button class="plan-switch secondary" name="billing_cycle" value="yearly" type="submit">
                         Yearly — save 2 months
                     </button>
                 </form>
@@ -352,11 +386,11 @@ include 'includes/admin_header.php';
             </form>
         <?php else: ?>
             <p class="billing-muted">Cancelling stops future renewals — you keep access until the current period ends.</p>
-            <form method="post" onsubmit="return confirm('Cancel auto-renewal for this workspace?');">
+            <form method="post" class="plan-actions" onsubmit="return confirm('Cancel auto-renewal for this workspace?');">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) $_SESSION['csrf_token']); ?>">
                 <input type="hidden" name="action" value="cancel">
                 <input class="form-control" name="reason" placeholder="Reason (optional)" style="max-width:340px;display:inline-block">
-                <button class="btn-icon" type="submit" style="border:1px solid #ef4444;color:#ef4444;background:#fff;border-radius:10px;padding:.55rem .9rem">
+                <button class="plan-cancel" type="submit">
                     Cancel auto-renewal
                 </button>
             </form>
