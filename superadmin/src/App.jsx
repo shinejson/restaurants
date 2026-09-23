@@ -26,10 +26,10 @@ function LogoutRoute() {
 }
 
 export default function App() {
-  const { user, loading } = useSession();
+  const { user, loading, expired } = useSession();
 
   if (loading) return <Spinner label="Checking your session…" />;
-  if (!user) return <Login />;
+  if (!user) return <Login expired={expired} />;
 
   return (
     <Routes>

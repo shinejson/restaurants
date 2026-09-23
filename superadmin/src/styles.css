@@ -580,6 +580,7 @@ textarea.input { resize: vertical; }
 .alert { border-radius: var(--radius-sm); padding: 12px 14px; font-size: 0.88rem; border: 1px solid transparent; }
 .alert-error { background: rgba(248, 113, 113, 0.12); border-color: rgba(248, 113, 113, 0.35); color: #fecaca; }
 .alert-success { background: rgba(52, 211, 153, 0.12); border-color: rgba(52, 211, 153, 0.32); color: #a7f3d0; }
+.alert-warning { background: rgba(251, 191, 36, 0.12); border-color: rgba(251, 191, 36, 0.35); color: #fde68a; }
 .alert-warn { background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.3); color: #fde68a; }
 
 .spinner { width: 14px; height: 14px; border: 2px solid rgba(255, 255, 255, 0.28); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }

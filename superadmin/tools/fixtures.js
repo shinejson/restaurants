@@ -89,7 +89,7 @@ const audit = (id) => ({
 });
 
 export const responses = {
-  '/auth/me': { data: { user: { id: 1, name: 'Platform Owner', email: 'owner@restaurantos.test', role: 'owner', is_active: 1 }, csrf_token: 'csrf-token', can: { '*': true, 'tenants.view': true, 'tenants.create': true, 'tenants.update': true, 'tenants.suspend': true, 'tenants.delete': true, 'tenants.impersonate': true, 'billing.view': true, 'billing.manage': true, 'plans.view': true, 'plans.manage': true, 'usage.view': true, 'audit.view': true, 'settings.manage': true, 'users.manage': true, 'system.view': true }, roles: { owner: { label: 'Owner', description: 'Full access', permissions: ['*'] }, support: { label: 'Support', description: 'Support staff', permissions: ['tenants.view'] } }, unread: 2 } },
+  '/auth/me': { data: { user: { id: 1, name: 'Platform Owner', email: 'owner@restaurantos.test', role: 'owner', is_active: 1 }, csrf_token: 'csrf-token', session_expires_at: '2030-01-01 00:00:00', can: { '*': true, 'tenants.view': true, 'tenants.create': true, 'tenants.update': true, 'tenants.suspend': true, 'tenants.delete': true, 'tenants.impersonate': true, 'billing.view': true, 'billing.manage': true, 'plans.view': true, 'plans.manage': true, 'usage.view': true, 'audit.view': true, 'settings.manage': true, 'users.manage': true, 'system.view': true }, roles: { owner: { label: 'Owner', description: 'Full access', permissions: ['*'] }, support: { label: 'Support', description: 'Support staff', permissions: ['tenants.view'] } }, unread: 2 } },
 
   '/overview': { data: {
     metrics: {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, Field, Input } from '../components/ui';
 import { useSession } from '../lib/session';
 
-export default function Login() {
+export default function Login({ expired = false }) {
   const { login } = useSession();
   const [email, setEmail] = useState('owner@restaurantos.test');
   const [password, setPassword] = useState('');
@@ -51,6 +51,10 @@ export default function Login() {
             <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
             Keep me signed in on this device
           </label>
+
+          {expired && (
+            <div className="alert alert-warning">Your session has expired. Please sign in again.</div>
+          )}
 
           {error && <div className="alert alert-error">{error}</div>}
 

@@ -44,6 +44,7 @@ return static function (Router $router): void {
                 'can'           => $can,
                 'roles'         => Auth::roles(),
                 'is_impersonating' => Auth::isImpersonating(),
+                'session_expires_at' => Auth::sessionExpiresAt(),
                 'unread'        => Notifications::unreadCount(),
             ]);
         }, [Middleware::auth()]);

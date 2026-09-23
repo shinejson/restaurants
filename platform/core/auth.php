@@ -132,6 +132,7 @@ final class Auth
     private const LOCKOUT_MINUTES = 15;
 
     private static ?array $cached = null;
+    private static ?string $sessionExpiresAt = null;
 
     /** Role => permission keys ("*" = everything). */
     private const PERMISSIONS = [
@@ -183,18 +184,36 @@ final class Auth
         }
 
         $token = $_SESSION['platform_session_token'] ?? null;
-        if ($token) {
-            $sessStmt = Manager::platform()->prepare(
-                'SELECT id, expires_at FROM platform_sessions WHERE token_hash = ? AND revoked_at IS NULL LIMIT 1'
-            );
-            $sessStmt->execute([hash('sha256', (string) $token)]);
-            $sess = $sessStmt->fetch(\PDO::FETCH_ASSOC);
+        if (!$token) {
+            // A platform user id without its session token is not a valid
+            // console session — never skip the expiry check.
+            unset($_SESSION['platform_user_id'], $_SESSION['platform_session_token'], $_SESSION['platform_csrf']);
+            self::$cached = null;
+            self::$sessionExpiresAt = null;
+            return null;
+        }
 
-            if (!$sess || (isset($sess['expires_at']) && $sess['expires_at'] <= Clock::now())) {
-                unset($_SESSION['platform_user_id'], $_SESSION['platform_session_token'], $_SESSION['platform_csrf']);
-                self::$cached = null;
-                return null;
-            }
+        $sessStmt = Manager::platform()->prepare(
+            'SELECT id, expires_at, last_seen_at FROM platform_sessions WHERE token_hash = ? AND revoked_at IS NULL LIMIT 1'
+        );
+        $sessStmt->execute([hash('sha256', (string) $token)]);
+        $sess = $sessStmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$sess || (isset($sess['expires_at']) && $sess['expires_at'] <= Clock::now())) {
+            // Expired or revoked — sign the console session out immediately.
+            unset($_SESSION['platform_user_id'], $_SESSION['platform_session_token'], $_SESSION['platform_csrf']);
+            self::$cached = null;
+            self::$sessionExpiresAt = null;
+            return null;
+        }
+
+        self::$sessionExpiresAt = $sess['expires_at'] ?? null;
+
+        // Keep the device list honest: touch last_seen_at at most once a minute.
+        if ((string) ($sess['last_seen_at'] ?? '') < gmdate('Y-m-d H:i:s', time() - 60)) {
+            Manager::platform()
+                ->prepare('UPDATE platform_sessions SET last_seen_at = ? WHERE id = ?')
+                ->execute([Clock::now(), (int) $sess['id']]);
         }
 
         $stmt = Manager::platform()->prepare('SELECT * FROM platform_users WHERE id = ? AND status = ?');
@@ -306,7 +325,8 @@ final class Auth
         self::$cached = $user;
         Csrf::rotate();
 
-        $token = Str::token(32);
+        $token     = Str::token(32);
+        $expiresAt = Clock::addDays(Clock::now(), $remember ? 30 : 7);
         Manager::platform()->prepare(
             'INSERT INTO platform_sessions (user_id, token_hash, ip, user_agent, device, last_seen_at, expires_at, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
@@ -317,12 +337,13 @@ final class Auth
             $request->userAgent(),
             self::describeDevice($request->userAgent()),
             Clock::now(),
-            Clock::addDays(Clock::now(), $remember ? 30 : 7),
+            $expiresAt,
             Clock::now(),
         ]);
 
         // Stored in the PHP session so the API can validate the cookie pair.
         $_SESSION['platform_session_token'] = $token;
+        self::$sessionExpiresAt = $expiresAt;
     }
 
     public static function logout(): void
@@ -337,6 +358,7 @@ final class Auth
             $_SESSION['platform_csrf']
         );
         self::$cached = null;
+        self::$sessionExpiresAt = null;
 
         if ($token) {
             try {
@@ -368,6 +390,18 @@ final class Auth
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_regenerate_id(true);
         }
+    }
+
+    /**
+     * Expiry timestamp (UTC, "Y-m-d H:i:s") of the current console session.
+     *
+     * Handed to the console through /auth/me so it can sign the user out the
+     * moment the session expires, even while the tab sits idle.
+     */
+    public static function sessionExpiresAt(): ?string
+    {
+        self::user(); // ensure this request's session validation has run
+        return self::$sessionExpiresAt;
     }
 
     /** Sessions listed in the console's security panel. */
