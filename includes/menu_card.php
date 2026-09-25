@@ -145,14 +145,31 @@ if ($has_promo && (float)$item['price'] > 0) {
             <img src="<?= $image_src ?>" alt="<?= htmlspecialchars($item['item_name']) ?>" class="food-img" loading="lazy">
             <span class="food-badge"><?= htmlspecialchars($item['main_category'] ?? '') ?></span>
             <?php if ($discount_pct > 0): ?>
-                <span class="badge-promo-tag" style="position:absolute; top:12px; right:12px; z-index:2;"><?= $discount_pct ?>% OFF</span>
+                <span class="badge-promo-tag" style="position:absolute; top:12px; right:12px; z-index:3;"><?= $discount_pct ?>% OFF</span>
             <?php endif; ?>
+            <!-- Floating price chip over image gradient -->
+            <div class="food-price-overlay">
+                <?php if ($has_promo): ?>
+                    <span class="original-price-sm"><?= format_currency($item['price']) ?></span>
+                <?php endif; ?>
+                <?= format_currency($has_promo ? $item['promo_price'] : $item['price']) ?>
+            </div>
         </div>
         <div class="food-content">
+            <!-- Star rating (visual) -->
+            <div class="food-stars">
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star-half-alt"></i>
+                <span class="star-count">(4.5)</span>
+            </div>
+
             <h5 class="food-title"><?= htmlspecialchars($item['item_name']) ?></h5>
 
             <?php if ($show_dietary || $show_calories): ?>
-                <div class="dietary-badges-row" style="justify-content: center;">
+                <div class="dietary-badges-row" style="margin-bottom:0.5rem;">
                     <?php if ($show_dietary && !empty($item['is_vegetarian'])): ?>
                         <span class="badge-diet veg" title="Vegetarian"><i class="fas fa-leaf"></i> Vegetarian</span>
                     <?php endif; ?>
@@ -174,22 +191,17 @@ if ($has_promo && (float)$item['price'] > 0) {
                 echo strlen($desc) > 65 ? substr(htmlspecialchars($desc), 0, 65) . '...' : htmlspecialchars($desc);
                 ?>
             </p>
-            <div class="food-price">
-                <?php if ($has_promo): ?>
-                    <span class="original-price"><?= format_currency($item['price']) ?></span>
-                    <span class="promo-price"><?= format_currency($item['promo_price']) ?></span>
-                <?php else: ?>
-                    <?= format_currency($item['price']) ?>
-                <?php endif; ?>
-            </div>
+
+            <!-- Full-width pill Add to Cart button -->
             <button class="add-to-cart-btn"
                 data-id="<?= $item['id'] ?>"
                 data-name="<?= htmlspecialchars($item['item_name']) ?>"
                 data-price="<?= $effective_price ?>"
                 data-image="<?= $image_src ?>"
                 aria-label="Add to cart">
-                <i class="fas fa-cart-plus"></i>
+                <i class="fas fa-cart-plus"></i> Add to Cart
             </button>
         </div>
     </div>
 <?php endif; ?>
+

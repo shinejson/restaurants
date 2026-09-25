@@ -122,10 +122,13 @@
                             <li><a href="<?php echo tenant_url('admin/dashboard.php'); ?>"><i class="fas fa-user-shield"></i>
                                     Admin Panel</a></li>
                         <?php else: ?>
-                            <li><a href="<?php echo tenant_url('auth/login.php'); ?>"><i class="fas fa-sign-in-alt"></i>
-                                    Login</a></li>
                             <li><a href="<?php echo tenant_url('auth/register.php'); ?>"><i class="fas fa-user-plus"></i>
                                     Register</a></li>
+                            <li class="nav-signin-item">
+                                <a href="<?php echo tenant_url('auth/login.php'); ?>" class="nav-signin-btn">
+                                    <i class="fas fa-sign-in-alt"></i> Sign In
+                                </a>
+                            </li>
                         <?php endif; ?>
 
                         <li>

@@ -8,7 +8,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        <?php echo $admin_title ?? 'Admin Panel'; ?> - FoodExpress
+        <?php echo $admin_title ?? 'Admin Panel'; ?> - <?php echo htmlspecialchars(get_setting('company_name', 'Restaurant Panel')); ?>
     </title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">

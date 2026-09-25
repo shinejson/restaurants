@@ -169,8 +169,22 @@ $isCustomHero = !empty($customHeroTitle) || !empty($customHeroImage);
                 <p><?php echo htmlspecialchars($meta['tagline']); ?></p>
                 <a href="menu.php" class="btn btn-hero">Book A Table</a>
             </div>
-            <div class="hero-img">
-                <img src="assets/images/hero-burger.png" alt="Hero Burger">
+            <!-- Hero image with floating badges and accent photo -->
+            <div class="hero-img hero-img-wrapper">
+                <div class="hero-img-mosaic">
+                    <img src="<?php echo BASE_URL; ?>/assets/images/hero-burger.png" alt="Hero Burger" class="hero-img-main">
+                    <img src="<?php echo BASE_URL; ?>/assets/images/hero-food-hero.jpg" alt="Featured Dish" class="hero-img-accent">
+                    <!-- Floating info badges -->
+                    <div class="hero-float-badge badge-fresh">
+                        <span class="badge-dot"></span> Fresh Daily
+                    </div>
+                    <div class="hero-float-badge badge-rated">
+                        ⭐ Top Rated
+                    </div>
+                    <div class="hero-float-badge badge-delivery">
+                        🚀 Fast Delivery
+                    </div>
+                </div>
             </div>
         </div>
         <div class="hero-slide">
@@ -188,51 +202,64 @@ $isCustomHero = !empty($customHeroTitle) || !empty($customHeroImage);
     </div>
 </div>
 
+
 <?php if (get_setting('section_show_services', '1') !== '0'): ?>
 <!-- Service Section -->
 <section class="container service-section">
-    <div class="service-grid">
+    <div class="service-grid reveal-section">
         <div class="service-item">
-            <i class="fas fa-user-tie"></i>
+            <div class="service-icon-wrap">
+                <i class="fas fa-user-tie"></i>
+            </div>
             <h5>Master Chefs</h5>
-            <p>Diam elitr kasd sed at elitr sed ipsum justo dolor sed clita amet diam</p>
+            <p>Expert culinary artisans crafting every dish with passion, precision, and the finest seasonal ingredients.</p>
         </div>
         <div class="service-item">
-            <i class="fas fa-utensils"></i>
+            <div class="service-icon-wrap">
+                <i class="fas fa-utensils"></i>
+            </div>
             <h5>Quality Food</h5>
-            <p>Diam elitr kasd sed at elitr sed ipsum justo dolor sed clita amet diam</p>
+            <p>Farm-to-table freshness guaranteed. Every ingredient sourced locally for unmatched taste and nutrition.</p>
         </div>
         <div class="service-item">
-            <i class="fas fa-cart-plus"></i>
+            <div class="service-icon-wrap">
+                <i class="fas fa-cart-plus"></i>
+            </div>
             <h5>Online Order</h5>
-            <p>Diam elitr kasd sed at elitr sed ipsum justo dolor sed clita amet diam</p>
+            <p>Seamless ordering experience — browse, customise, and checkout in seconds from any device.</p>
         </div>
         <div class="service-item">
-            <i class="fas fa-headset"></i>
+            <div class="service-icon-wrap">
+                <i class="fas fa-headset"></i>
+            </div>
             <h5>24/7 Service</h5>
-            <p>Diam elitr kasd sed at elitr sed ipsum justo dolor sed clita amet diam</p>
+            <p>Round-the-clock support and late-night availability so you're never left hungry or without help.</p>
         </div>
     </div>
 </section>
 <?php endif; ?>
+
 
 <?php if (get_setting('section_show_about', '1') !== '0'): ?>
 <!-- About Section -->
 <section class="container about-section">
     <div class="about-grid">
         <div class="about-img">
-            <div class="about-img-grid">
-                <img src="assets/images/about-grid.png" alt="About Grid">
+            <!-- Image collage with floating badge -->
+            <div class="about-img-collage">
+                <img src="<?php echo BASE_URL; ?>/assets/images/food-ambience.jpg" alt="Our Restaurant" class="about-img-main">
+                <img src="<?php echo BASE_URL; ?>/assets/images/about-grid.png" alt="Our Food" class="about-img-secondary">
+                <div class="about-exp-badge">
+                    <span>15+</span>
+                    <small>Years Exp.</small>
+                </div>
             </div>
         </div>
         <div class="about-content">
             <h5 class="section-subtitle">About Us</h5>
             <h1 class="section-title">Welcome to <i class="fas fa-utensils"></i> <?php echo htmlspecialchars($meta['name']); ?></h1>
-            <p>Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit.
-                Aliqu diam amet diam et eos erat ipsum et lorem et sit, sed stet lorem sit.</p>
-            <p>Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit.
-                Aliqu diam amet diam et eos. Clita erat ipsum et lorem et sit, sed stet lorem sit clita duo justo magna
-                dolore erat amet</p>
+            <p>We believe great food tells a story. From hand-picked ingredients to time-honoured recipes elevated with a modern twist, every dish we serve is crafted with care and pride.</p>
+            <p>Our kitchen is a stage, our chefs are artists, and every meal is a performance — designed to delight, surprise, and leave you wanting more.</p>
 
             <div class="about-stats">
                 <div class="stat-item">
@@ -245,11 +272,12 @@ $isCustomHero = !empty($customHeroTitle) || !empty($customHeroImage);
                 </div>
             </div>
 
-            <a href="menu.php" class="btn btn-hero">Read More</a>
+            <a href="menu.php" class="btn btn-hero">Explore Our Menu</a>
         </div>
     </div>
 </section>
 <?php endif; ?>
+
 
 <!-- Featured Items (Menu) -->
 <section class="container food-menu-section">
@@ -501,26 +529,38 @@ $isCustomHero = !empty($customHeroTitle) || !empty($customHeroImage);
                 let promoBadge = '';
                 if (item.promo_price && item.price > item.promo_price) {
                     const pct = Math.round(((item.price - item.promo_price) / item.price) * 100);
-                    promoBadge = `<span class="badge-promo-tag">${pct}% OFF</span>`;
+                    promoBadge = `<span class="badge-promo-tag" style="position:absolute;top:12px;right:12px;z-index:3;">${pct}% OFF</span>`;
                 }
+
+                const priceOverlay = item.promo_formatted
+                    ? `<div class="food-price-overlay"><span class="original-price-sm">${escapeHtml(item.price_formatted)}</span>${escapeHtml(item.promo_formatted)}</div>`
+                    : `<div class="food-price-overlay">${escapeHtml(item.price_formatted)}</div>`;
 
                 return `
                 <div class="food-card">
                     <div class="food-img-container">
-                        <img src="${escapeHtml(image)}" alt="${escapeHtml(item.item_name)}" class="food-img">
+                        <img src="${escapeHtml(image)}" alt="${escapeHtml(item.item_name)}" class="food-img" loading="lazy">
                         <span class="food-badge">${escapeHtml(item.main_category)}</span>
                         ${promoBadge}
+                        ${priceOverlay}
                     </div>
                     <div class="food-content">
+                        <div class="food-stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star-half-alt"></i>
+                            <span class="star-count">(4.5)</span>
+                        </div>
                         <h5 class="food-title">${escapeHtml(item.item_name)}</h5>
                         <p class="food-description">${desc}</p>
                         ${badgesHtml}
-                        <div class="food-price">${price}</div>
                         <button class="add-to-cart-btn" data-id="${escapeHtml(item.id)}"
                             data-name="${escapeHtml(item.item_name)}"
                             data-price="${escapeHtml(activePrice)}"
                             data-image="${escapeHtml(image)}">
-                            <i class="fas fa-cart-plus"></i>
+                            <i class="fas fa-cart-plus"></i> Add to Cart
                         </button>
                     </div>
                 </div>`;
@@ -591,6 +631,44 @@ $isCustomHero = !empty($customHeroTitle) || !empty($customHeroImage);
             loadItems(category, search, false);
         });
     });
+</script>
+
+<script>
+// ─── Section Reveal on Scroll ───────────────────────────────────────────────
+(function () {
+    const revealEls = document.querySelectorAll('.reveal-section');
+    if (!revealEls.length || !('IntersectionObserver' in window)) {
+        revealEls.forEach(function (el) { el.classList.add('visible'); });
+        return;
+    }
+    const observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.12 });
+    revealEls.forEach(function (el) { observer.observe(el); });
+
+    // Also observe .food-card for staggered entrance
+    const cardObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+                cardObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.08 });
+
+    document.querySelectorAll('.food-card').forEach(function (card, i) {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(28px)';
+        card.style.transition = 'opacity 0.5s ease ' + (i * 0.07) + 's, transform 0.5s ease ' + (i * 0.07) + 's';
+        cardObserver.observe(card);
+    });
+}());
 </script>
 
 <?php include 'includes/footer.php'; ?>

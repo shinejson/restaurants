@@ -20,6 +20,10 @@ if (isset($_SESSION['admin_id'])) {
         <button id="toggleSidebar" class="icon-btn" title="Toggle Sidebar">
             <i class="fas fa-bars"></i>
         </button>
+        <a href="<?php echo BASE_URL; ?>/admin/dashboard.php" class="topnav-brand" title="Go to Dashboard">
+            <span class="topnav-brand-icon"><i class="fas fa-utensils"></i></span>
+            <span class="topnav-brand-name"><?php echo htmlspecialchars(get_setting('company_name', 'Restaurant Panel')); ?></span>
+        </a>
         <form action="<?php echo BASE_URL; ?>/admin/search.php" method="GET" class="search-bar"
             style="display: flex; align-items: center; gap: 0.5rem; background: var(--white); padding: 0.5rem 1rem; border-radius: 12px; border: 1px solid var(--border-color); flex: 1; max-width: 500px;">
             <i class="fas fa-search" style="color: var(--text-muted);"></i>
@@ -67,18 +71,41 @@ if (isset($_SESSION['admin_id'])) {
             </div>
         </div>
 
+        <?php
+        $admin_display_name = $admin_details['username'] ?? ($_SESSION['user_name'] ?? 'Admin');
+        $admin_role_label   = isset($admin_details['role']) ? ucfirst($admin_details['role']) : 'Staff';
+        ?>
         <div class="user-profile-dropdown">
             <button class="profile-btn" id="profileBtn">
-                <img src="https://ui-avatars.com/api/?name=Admin&background=ff6b35&color=fff" alt="Profile">
-                <span>Admin</span>
+                <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($admin_display_name); ?>&background=ff6b35&color=fff" alt="Profile">
+                <span class="profile-btn-text">
+                    <span class="profile-btn-name"><?php echo htmlspecialchars($admin_display_name); ?></span>
+                    <small class="profile-btn-role"><?php echo htmlspecialchars($admin_role_label); ?></small>
+                </span>
                 <i class="fas fa-chevron-down"></i>
             </button>
             <div class="dropdown-content" id="profileDropdown">
-                <a href="javascript:void(0)" id="openProfileModal"><i class="fas fa-user-circle"></i> My Profile</a>
-                <a href="<?php echo BASE_URL; ?>/admin/settings.php"><i class="fas fa-cog"></i> Settings</a>
-                <hr>
-                <a href="<?php echo BASE_URL; ?>/admin/logout.php" class="text-danger"><i
-                        class="fas fa-sign-out-alt"></i> Logout</a>
+                <div class="profile-dropdown-header">
+                    <div class="profile-dropdown-avatar">
+                        <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($admin_display_name); ?>&background=ff6b35&color=fff&size=128" alt="Profile">
+                    </div>
+                    <div class="profile-dropdown-meta">
+                        <strong><?php echo htmlspecialchars($admin_display_name); ?></strong>
+                        <span><?php echo htmlspecialchars($admin_role_label); ?></span>
+                    </div>
+                </div>
+                <div class="dropdown-restaurant-label">
+                    <i class="fas fa-store"></i>
+                    <?php echo htmlspecialchars(get_setting('company_name', 'Restaurant Panel')); ?>
+                </div>
+                <div class="profile-dropdown-menu">
+                    <a href="javascript:void(0)" id="openProfileModal"><i class="fas fa-user-circle"></i> <span>My Profile</span></a>
+                    <a href="<?php echo BASE_URL; ?>/admin/settings.php"><i class="fas fa-cog"></i> <span>Settings</span></a>
+                    <a href="<?php echo BASE_URL; ?>/" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> <span>View Storefront</span></a>
+                </div>
+                <div class="profile-dropdown-footer">
+                    <a href="<?php echo BASE_URL; ?>/admin/logout.php" class="text-danger"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+                </div>
             </div>
         </div>
     </div>
@@ -277,6 +304,142 @@ if (isset($_SESSION['admin_id'])) {
     .btn-edit-profile:hover {
         opacity: 0.9;
         transform: translateY(-2px);
+    }
+
+    .profile-dropdown-header {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        padding: 1.1rem 1.2rem 0.9rem;
+        background: linear-gradient(135deg, rgba(255,107,53,0.12), rgba(255,107,53,0.04));
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .profile-dropdown-avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 2px solid rgba(255,255,255,0.8);
+        box-shadow: 0 12px 20px -14px rgba(255,107,53,0.7);
+        background: var(--white);
+        flex-shrink: 0;
+    }
+
+    .profile-dropdown-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .profile-dropdown-meta {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .profile-dropdown-meta strong {
+        color: var(--text-main);
+        font-size: 0.98rem;
+        line-height: 1.25;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .profile-dropdown-meta span {
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .profile-dropdown-menu {
+        padding: 0.7rem 0.7rem 0.3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .profile-dropdown-menu a,
+    .profile-dropdown-footer a {
+        padding: 0.8rem 0.9rem;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        font-size: 0.96rem;
+        font-weight: 600;
+        color: var(--text-main);
+        text-decoration: none;
+        transition: var(--transition);
+    }
+
+    .profile-dropdown-menu a i,
+    .profile-dropdown-footer a i {
+        width: 18px;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.96rem;
+    }
+
+    .profile-dropdown-menu a:hover,
+    .profile-dropdown-footer a:hover {
+        background: var(--light-bg);
+        color: var(--primary-color);
+        transform: translateX(2px);
+    }
+
+    .profile-dropdown-menu a:hover i,
+    .profile-dropdown-footer a:hover i {
+        color: var(--primary-color);
+    }
+
+    .profile-dropdown-footer {
+        padding: 0.35rem 0.7rem 0.7rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: 0.35rem;
+    }
+
+    .profile-dropdown-footer a {
+        color: var(--text-main);
+    }
+
+    .profile-dropdown-footer .text-danger {
+        color: #d14343;
+    }
+
+    .profile-dropdown-footer .text-danger:hover {
+        color: #c21b1b;
+        background: rgba(209, 67, 67, 0.06);
+    }
+
+    .profile-dropdown-footer .text-danger i {
+        color: #d14343;
+    }
+
+    .dropdown-content {
+        border-radius: 18px;
+        box-shadow: 0 24px 60px -28px rgba(15, 23, 42, 0.35);
+    }
+
+    .dropdown-restaurant-label {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 0.9rem 1.15rem;
+        font-weight: 700;
+        font-size: 0.8rem;
+        color: var(--primary-color);
+        background: linear-gradient(135deg, rgba(255,107,53,0.08), rgba(255,107,53,0.03));
+        border-bottom: 1px solid var(--border-color);
+        letter-spacing: 0.02em;
+    }
+
+    .dropdown-restaurant-label i {
+        font-size: 0.82rem;
     }
 
     @media (max-width: 576px) {
